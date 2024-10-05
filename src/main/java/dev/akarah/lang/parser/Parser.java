@@ -53,7 +53,7 @@ public class Parser {
                     throw new RuntimeException("wip");
                 }
                 case "declare" -> {
-
+                    return parseFunctionDeclaration();
                 }
             }
         }
@@ -313,6 +313,9 @@ public class Parser {
                 tokenReader.match(it -> it instanceof Token.CloseParen);
                 yield inner;
             }
+            case Token.StringLiteral sl -> {
+                yield new AST.Expression.CStringLiteral(sl.literal());
+            }
             case Token.Keyword keyword -> {
                 switch (keyword.keyword()) {
                     case "if" -> {
@@ -365,6 +368,23 @@ public class Parser {
     }
 
     public Type parseType$2() {
+        var base = parseType$3();
+        while(true) {
+            if(tokenReader.peek() instanceof Token.OpenBracket) {
+                tokenReader.match(it -> it instanceof Token.OpenBracket);
+                var o = tokenReader.match(it -> it instanceof Token.IntegerLiteral || it instanceof Token.CloseBracket);
+                if(o instanceof Token.IntegerLiteral il) {
+                    tokenReader.match(it -> it instanceof Token.CloseBracket);
+                    base = new Type.Array(base, il.literal());
+                } else {
+                    base = new Type.Array(base, -1);
+                }
+            } else break;
+        }
+        return base;
+    }
+
+    public Type parseType$3() {
         skipWhitespace();
         return switch (tokenReader.read()) {
             case Token.Keyword kw -> switch (kw.keyword()) {

@@ -72,6 +72,14 @@ public class Lexer {
                 } else {
                     tokens.add(new Token.IdentifierLiteral(sb.toString(), stringReader.generateSpan()));
                 }
+            } else if (stringReader.peek() == '"') {
+                stringReader.match(it -> it == '"');
+                var sb = new StringBuilder();
+                while (stringReader.peek() != '"'){
+                    sb.append(stringReader.read());
+                }
+                stringReader.match(it -> it == '"');
+                tokens.add(new Token.StringLiteral(sb.toString(), stringReader.generateSpan()));
             } else if (Character.isDigit(stringReader.peek())) {
                 var sb = new StringBuilder();
                 do {

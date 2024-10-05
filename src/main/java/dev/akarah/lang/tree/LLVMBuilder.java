@@ -8,8 +8,6 @@ import dev.akarah.llvm.inst.Instruction;
 import dev.akarah.llvm.inst.Types;
 import dev.akarah.llvm.inst.Value;
 
-import java.util.List;
-
 public class LLVMBuilder {
     FunctionTypeInformation typeInformation;
     Module module;
@@ -49,17 +47,25 @@ public class LLVMBuilder {
         this.function = Function.of(new Value.GlobalVariable(function.name()));
         this.astFunction = function;
 
+        var bb = BasicBlock.of(Value.LocalVariable.random());
+
         for(var param : function.parameters().keySet()) {
             var type = function.parameters().get(param);
-            var llvmName = Value.LocalVariable.random();
-            this.function.parameter(type.llvm(), llvmName);
-            function.codeTypeInformation().v.llvmLocals.put(param, llvmName);
+            var llvmRaw = Value.LocalVariable.random();
+            var llvmPtr = bb.alloca(type.llvm());
+            this.function.parameter(type.llvm(), llvmRaw);
+            bb.store(type.llvm(), llvmRaw, llvmPtr);
+            function.codeTypeInformation().v.llvmLocals.put(param, llvmPtr);
         }
 
-
-        walkCodeBlock(function.codeBlock());
-
+        this.basicBlock = bb;
         this.function.returns(function.returnType().llvm());
+
+        for(var stmt : function.codeBlock().statements()) {
+            walkStatement(stmt);
+        }
+
+        this.function.withBasicBlock(bb);
 
         module.functions.add(this.function);
     }
@@ -112,6 +118,7 @@ public class LLVMBuilder {
                 );
             }
             case AST.Expression.ArrayLiteral arrayLiteral -> {
+
             }
             case AST.Expression.CodeBlock codeBlock -> {
                 walkCodeBlock(codeBlock);
@@ -221,6 +228,19 @@ public class LLVMBuilder {
                     astFunction.codeTypeInformation().v.locals.get(variableLiteral.name()).llvm(),
                     astFunction.codeTypeInformation().v.llvmLocals.get(variableLiteral.name())
                 );
+            }
+            case AST.Expression.CStringLiteral stringLiteral -> {
+                var global = Value.GlobalVariable.random();
+                module.newGlobal(
+                    global,
+                    globalVariable -> {
+                        var deref = (Type.Reference) stringLiteral.type().v;
+                        globalVariable
+                            .withType(deref.type().llvm())
+                            .withValue(new Value.CStringConstant(stringLiteral.contents() + "\\\\00"));
+                    }
+                );
+                return global;
             }
         }
         throw new UnsupportedOperationException("WIP " + expression);

@@ -1,9 +1,6 @@
 package dev.akarah.lang.tree;
 
-import dev.akarah.llvm.cfg.BasicBlock;
-import dev.akarah.llvm.inst.Constant;
-import dev.akarah.llvm.inst.Value;
-
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -115,6 +112,20 @@ public sealed interface AST {
             @Override
             public void accept(Visitor visitor) {
                 visitor.expression(this);
+            }
+        }
+
+        record CStringLiteral(String contents) implements Expression {
+            @Override
+            public void accept(Visitor visitor) {
+                visitor.expression(this);
+            }
+
+            @Override
+            public Mutable<Type> type() {
+                return new Mutable<>(
+                    new Type.Reference(new Type.Array(new Type.Integer(8), this.contents().getBytes(StandardCharsets.UTF_8).length+1))
+                );
             }
         }
 

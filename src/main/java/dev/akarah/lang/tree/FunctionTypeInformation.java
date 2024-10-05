@@ -93,6 +93,9 @@ public class FunctionTypeInformation implements AST.Visitor {
             }
             case AST.Expression.VariableLiteral variableLiteral ->
                 variableLiteral.type().v = locals.get(variableLiteral.name());
+            case AST.Expression.CStringLiteral stringLiteral -> {
+
+            }
         }
         System.out.println("Expring 2: " + expression);
     }

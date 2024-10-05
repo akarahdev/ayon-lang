@@ -6,6 +6,7 @@ public sealed interface Token {
     record Keyword(String keyword, SpanData span) implements Token {}
     record IdentifierLiteral(String literal, SpanData span) implements Token {}
     record IntegerLiteral(long literal, SpanData span) implements Token {}
+    record StringLiteral(String literal, SpanData span) implements Token {}
     record FloatingLiteral(double literal, SpanData span) implements Token {}
     record NewLine(SpanData span) implements Token {}
 
