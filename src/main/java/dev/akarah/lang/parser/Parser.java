@@ -8,6 +8,7 @@ import dev.akarah.lang.tree.Type;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.TreeMap;
 
 public class Parser {
@@ -22,6 +23,25 @@ public class Parser {
             tokenReader.read();
     }
 
+    public AST.Program parseAll() {
+        var headers = new ArrayList<AST.Header>();
+
+        while (true) {
+            skipWhitespace();
+            System.out.println(tokenReader.peek());
+            if (tokenReader.peek() instanceof Token.EOF) {
+                break;
+            }
+            headers.add(parseHeader());
+            skipWhitespace();
+            System.out.println(tokenReader.peek());
+            if (tokenReader.peek() instanceof Token.EOF) {
+                break;
+            }
+        }
+        return new AST.Program(headers);
+    }
+
     public AST.Header parseHeader() {
         skipWhitespace();
         if (tokenReader.peek() instanceof Token.Keyword keyword) {
@@ -32,9 +52,60 @@ public class Parser {
                 case "struct" -> {
                     throw new RuntimeException("wip");
                 }
+                case "declare" -> {
+
+                }
             }
         }
         throw new RuntimeException("??? " + tokenReader.peek());
+    }
+
+    public AST.Header.FunctionDeclaration parseFunctionDeclaration() {
+        skipWhitespace();
+        tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("declare"));
+        skipWhitespace();
+        tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("fn"));
+        skipWhitespace();
+        var ident = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
+        skipWhitespace();
+        tokenReader.match(it -> it instanceof Token.OpenParen);
+        var params = new TreeMap<String, Type>();
+        loop:
+        while (true) {
+            skipWhitespace();
+            if (tokenReader.peek() instanceof Token.CloseParen) {
+                tokenReader.read();
+                break;
+            }
+
+            var id = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
+            tokenReader.match(it -> it instanceof Token.Colon);
+            var ty = parseType();
+
+            var ot = tokenReader.match(it -> it instanceof Token.Comma || it instanceof Token.CloseParen);
+
+            params.put(id.literal(), ty);
+
+            switch (ot) {
+                case Token.CloseParen closeParen -> {
+                    break loop;
+                }
+                case Token.Comma comma -> {}
+                default -> {
+                }
+            }
+        }
+        skipWhitespace();
+        tokenReader.match(it -> it instanceof Token.Arrow);
+        skipWhitespace();
+        var returnType = parseType();
+        skipWhitespace();
+
+        return new AST.Header.FunctionDeclaration(
+            ident.literal(),
+            params,
+            returnType
+        );
     }
 
     public AST.Header.Function parseFunction() {
@@ -44,8 +115,33 @@ public class Parser {
         var ident = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.OpenParen);
-        skipWhitespace();
-        tokenReader.match(it -> it instanceof Token.CloseParen);
+
+        var params = new TreeMap<String, Type>();
+        loop:
+        while (true) {
+            skipWhitespace();
+            if (tokenReader.peek() instanceof Token.CloseParen) {
+                tokenReader.read();
+                break;
+            }
+
+            var id = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
+            tokenReader.match(it -> it instanceof Token.Colon);
+            var ty = parseType();
+
+            var ot = tokenReader.match(it -> it instanceof Token.Comma || it instanceof Token.CloseParen);
+
+            params.put(id.literal(), ty);
+
+            switch (ot) {
+                case Token.CloseParen closeParen -> {
+                    break loop;
+                }
+                case Token.Comma comma -> { continue loop; }
+                default -> {
+                }
+            }
+        }
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Arrow);
         skipWhitespace();
@@ -54,9 +150,10 @@ public class Parser {
         if (tokenReader.peek() instanceof Token.OpenBrace) {
             return new AST.Header.Function(
                 ident.literal(),
-                new TreeMap<>(),
+                params,
                 returnType,
-                parseCodeBlock()
+                parseCodeBlock(),
+                new Mutable<>()
             );
         } else {
             tokenReader.match(it -> it instanceof Token.Equals);
@@ -64,9 +161,11 @@ public class Parser {
                 ident.literal(),
                 new TreeMap<>(),
                 returnType,
-                new AST.Expression.CodeBlock(List.of(
-                    new AST.Statement.ReturnValue(parseExpression())
-                ), new Mutable<>())
+                new AST.Expression.CodeBlock(
+                    List.of(new AST.Statement.ReturnValue(parseExpression())),
+                    new Mutable<>()
+                ),
+                new Mutable<>()
             );
         }
     }
@@ -101,7 +200,7 @@ public class Parser {
                     var ty = new Mutable<Type>();
                     if (tokenReader.peek() instanceof Token.Colon) {
                         tokenReader.read();
-                        ty.value = parseType();
+                        ty.v = parseType();
                     }
 
                     tokenReader.match(it -> it instanceof Token.Equals);
@@ -213,6 +312,37 @@ public class Parser {
                 var inner = parseExpression();
                 tokenReader.match(it -> it instanceof Token.CloseParen);
                 yield inner;
+            }
+            case Token.Keyword keyword -> {
+                switch (keyword.keyword()) {
+                    case "if" -> {
+
+                        var condition = parseExpression();
+
+                        System.out.println(tokenReader.peek());
+
+                        System.out.println(condition);
+                        var ifTrueBlock = parseCodeBlock();
+
+                        if (tokenReader.peek() instanceof Token.Keyword tk && tk.keyword().equals("else")) {
+                            tokenReader.read();
+                            yield new AST.Expression.Conditional(
+                                condition,
+                                ifTrueBlock,
+                                Optional.of(parseCodeBlock()),
+                                new Mutable<>()
+                            );
+                        } else {
+                            yield new AST.Expression.Conditional(
+                                condition,
+                                ifTrueBlock,
+                                Optional.empty(),
+                                new Mutable<>()
+                            );
+                        }
+                    }
+                    default -> throw new RuntimeException("bad at " + keyword);
+                }
             }
             default -> throw new RuntimeException("not an expression " + t);
         };

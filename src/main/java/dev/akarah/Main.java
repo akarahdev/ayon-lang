@@ -5,9 +5,11 @@ import dev.akarah.lang.lexer.StringReader;
 import dev.akarah.lang.lexer.Token;
 import dev.akarah.lang.parser.Parser;
 import dev.akarah.lang.parser.TokenReader;
-import dev.akarah.lang.tree.FunctionTypeDecorator;
+import dev.akarah.lang.tree.AST;
+import dev.akarah.lang.tree.FunctionTypeInformation;
+import dev.akarah.lang.tree.LLVMBuilder;
+import dev.akarah.lang.tree.ProgramTypeInformation;
 import dev.akarah.llvm.Module;
-import dev.akarah.llvm.inst.Value;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,21 +27,45 @@ public class Main {
         System.out.println("----");
 
         var parser = new Parser(new TokenReader(tok));
-        var tree = parser.parseFunction();
-        System.out.println(tree);
 
-        var ftd = new FunctionTypeDecorator();
-        ftd.functions.put(tree.name(), tree);
-        ftd.header(tree);
+        var program = parser.parseAll();
 
-        tree.visit(ftd);
+        System.out.println(program.headers().size());
 
-        System.out.println(tree);
+        for(var header : program.headers()) {
+            System.out.println("Pre-processing header: " + header);
+            switch (header) {
+                case AST.Header.Function function -> {
+                    ProgramTypeInformation.functions.put(function.name(), new AST.Header.FunctionDeclaration(
+                        function.name(),
+                        function.parameters(),
+                        function.returnType()
+                    ));
+                }
+                case AST.Header.FunctionDeclaration functionDeclaration -> {
+                    ProgramTypeInformation.functions.put(functionDeclaration.name(), functionDeclaration);
+                }
+            }
+        }
 
+        for(var header : program.headers()) {
+            System.out.println("Typechecking header: " + header);
+            switch (header) {
+                case AST.Header.Function function -> {
+                    System.out.println(function);
 
+                    var ftd = new FunctionTypeInformation();
+                    ftd.header(function);
 
-        var module = Module.of("test-module");
-        module.functions.add(tree.toLLVM());
-        module.compile();
+                    function.visit(ftd);
+                    function.codeTypeInformation().v = ftd;
+
+                    System.out.println("fd: " + function);
+                }
+                case AST.Header.FunctionDeclaration functionDeclaration -> {}
+            }
+        }
+
+        new LLVMBuilder().walkProgram(program);
     }
 }

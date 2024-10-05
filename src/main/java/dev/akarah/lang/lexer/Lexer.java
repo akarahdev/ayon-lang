@@ -13,6 +13,7 @@ public class Lexer {
         return """
             ; Skipped line for other keywords
             fn
+            declare
             if
             then
             else
