@@ -1,12 +1,12 @@
-package dev.akarah.lang.tree;
+package dev.akarah.lang.ir;
 
+import dev.akarah.lang.tree.AST;
+import dev.akarah.lang.tree.FunctionTypeInformation;
+import dev.akarah.lang.tree.ProgramTypeInformation;
 import dev.akarah.llvm.Module;
 import dev.akarah.llvm.cfg.BasicBlock;
 import dev.akarah.llvm.cfg.Function;
-import dev.akarah.llvm.inst.Constant;
-import dev.akarah.llvm.inst.Instruction;
-import dev.akarah.llvm.inst.Types;
-import dev.akarah.llvm.inst.Value;
+import dev.akarah.llvm.inst.*;
 
 public class LLVMBuilder {
     FunctionTypeInformation typeInformation;
@@ -16,6 +16,14 @@ public class LLVMBuilder {
     AST.Header.Function astFunction;
     BasicBlock basicBlock;
 
+    public Type valueWrapper(Type baseType) {
+        return Types.struct(new Type[]{
+            Types.integer(16),
+            Types.integer(16),
+            baseType
+        });
+    }
+
     public void walkProgram(AST.Program program) {
         module = Module.of("test-module");
         for(var header : program.headers()) {
@@ -23,7 +31,6 @@ public class LLVMBuilder {
                 case AST.Header.Function function -> walkFunction(function);
                 case AST.Header.FunctionDeclaration declaration -> declareFunction(declaration);
             }
-
         }
         module.compile();
     }
@@ -224,17 +231,18 @@ public class LLVMBuilder {
             case AST.Expression.Subscript subscript -> {
             }
             case AST.Expression.VariableLiteral variableLiteral -> {
-                return basicBlock.load(
+                var raw = basicBlock.load(
                     astFunction.codeTypeInformation().v.locals.get(variableLiteral.name()).llvm(),
                     astFunction.codeTypeInformation().v.llvmLocals.get(variableLiteral.name())
                 );
+                return raw;
             }
             case AST.Expression.CStringLiteral stringLiteral -> {
                 var global = Value.GlobalVariable.random();
                 module.newGlobal(
                     global,
                     globalVariable -> {
-                        var deref = (Type.Reference) stringLiteral.type().v;
+                        var deref = (dev.akarah.lang.tree.Type.Reference) stringLiteral.type().v;
                         globalVariable
                             .withType(deref.type().llvm())
                             .withValue(new Value.CStringConstant(stringLiteral.contents() + "\\\\00"));

@@ -7,9 +7,8 @@ import dev.akarah.lang.parser.Parser;
 import dev.akarah.lang.parser.TokenReader;
 import dev.akarah.lang.tree.AST;
 import dev.akarah.lang.tree.FunctionTypeInformation;
-import dev.akarah.lang.tree.LLVMBuilder;
+import dev.akarah.lang.ir.LLVMBuilder;
 import dev.akarah.lang.tree.ProgramTypeInformation;
-import dev.akarah.llvm.Module;
 
 import java.io.IOException;
 import java.nio.file.Files;
