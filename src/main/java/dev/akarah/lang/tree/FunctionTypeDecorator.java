@@ -37,8 +37,7 @@ public class FunctionTypeDecorator implements AST.Visitor {
                         il.type().value = new Type.Integer(32);
                 }
             }
-            case AST.Expression.Add add -> {
-            }
+            case AST.Expression.Add add -> add.type().value = add.lhs().type().value;
             case AST.Expression.ArrayLiteral arrayLiteral ->
                 arrayLiteral.type().value =
                     new Type.Array(arrayLiteral.values().getFirst().type().value, (long) arrayLiteral.values().size());

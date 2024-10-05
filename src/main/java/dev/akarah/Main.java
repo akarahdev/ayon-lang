@@ -6,6 +6,8 @@ import dev.akarah.lang.lexer.Token;
 import dev.akarah.lang.parser.Parser;
 import dev.akarah.lang.parser.TokenReader;
 import dev.akarah.lang.tree.FunctionTypeDecorator;
+import dev.akarah.llvm.Module;
+import dev.akarah.llvm.inst.Value;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,5 +35,11 @@ public class Main {
         tree.visit(ftd);
 
         System.out.println(tree);
+
+
+
+        var module = Module.of("test-module");
+        module.functions.add(tree.toLLVM());
+        module.compile();
     }
 }

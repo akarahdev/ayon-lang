@@ -1,6 +1,7 @@
 package dev.akarah.lang.tree;
 
 import dev.akarah.llvm.cfg.BasicBlock;
+import dev.akarah.llvm.inst.Constant;
 import dev.akarah.llvm.inst.Value;
 
 import java.util.List;
@@ -30,7 +31,7 @@ public sealed interface AST {
         ) implements Header {
             public dev.akarah.llvm.cfg.Function toLLVM() {
                 var f = dev.akarah.llvm.cfg.Function.of(new Value.GlobalVariable(this.name));
-                for(var key : parameters.keySet()) {
+                for (var key : parameters.keySet()) {
                     f.parameter(parameters.get(key).llvm(), Value.LocalVariable.random());
                 }
                 f.returns(returnType.llvm());
@@ -57,6 +58,13 @@ public sealed interface AST {
                 value.accept(visitor);
                 visitor.statement(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                var variable = basicBlock.alloca(this.type.value.llvm());
+                basicBlock.store(this.type.value.llvm(), value.llvm(basicBlock), variable);
+                return null;
+            }
         }
 
         record ReturnValue(
@@ -66,6 +74,12 @@ public sealed interface AST {
             public void accept(Visitor visitor) {
                 value.accept(visitor);
                 visitor.statement(this);
+            }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                basicBlock.ret(this.value().type().value.llvm(), this.value.llvm(basicBlock));
+                return null;
             }
         }
 
@@ -79,26 +93,40 @@ public sealed interface AST {
                 runWhile.accept(visitor);
                 visitor.statement(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                throw new UnsupportedOperationException("WIP");
+            }
         }
 
         void accept(Visitor visitor);
+
+        Value llvm(BasicBlock basicBlock);
     }
 
     sealed interface Expression extends AST, AST.Statement {
         record CodeBlock(List<Statement> statements, Mutable<Type> type) implements Expression {
             public BasicBlock toBasicBlock() {
                 var bb = BasicBlock.of(Value.LocalVariable.random());
-                for(var stmt : statements) {
-
+                for (var stmt : statements) {
+                    stmt.llvm(bb);
                 }
                 return bb;
             }
 
             @Override
             public void accept(Visitor visitor) {
-                for(var stmt : statements)
+                for (var stmt : statements)
                     stmt.accept(visitor);
                 visitor.expression(this);
+            }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                var bb = this.toBasicBlock();
+                basicBlock.br(bb.name());
+                return bb.name();
             }
         }
 
@@ -107,12 +135,22 @@ public sealed interface AST {
             public void accept(Visitor visitor) {
                 visitor.expression(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                return Constant.constant(integer);
+            }
         }
 
         record FloatingLiteral(double floating, Mutable<Type> type) implements Expression {
             @Override
             public void accept(Visitor visitor) {
                 visitor.expression(this);
+            }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                return Constant.constant(floating);
             }
         }
 
@@ -121,14 +159,24 @@ public sealed interface AST {
             public void accept(Visitor visitor) {
                 visitor.expression(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                throw new UnsupportedOperationException("WIP");
+            }
         }
 
         record ArrayLiteral(List<Expression> values, Mutable<Type> type) implements Expression {
             @Override
             public void accept(Visitor visitor) {
-                for(var value : values)
+                for (var value : values)
                     value.accept(visitor);
                 visitor.expression(this);
+            }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                throw new UnsupportedOperationException("WIP");
             }
         }
 
@@ -141,6 +189,11 @@ public sealed interface AST {
                 ifFalse.ifPresent(iff -> iff.accept(visitor));
                 visitor.expression(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                throw new UnsupportedOperationException("WIP");
+            }
         }
 
         record Add(Expression lhs, Expression rhs, Mutable<Type> type) implements Expression {
@@ -149,6 +202,11 @@ public sealed interface AST {
                 lhs.accept(visitor);
                 rhs.accept(visitor);
                 visitor.expression(this);
+            }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                return basicBlock.add(this.type.value.llvm(), lhs.llvm(basicBlock), rhs.llvm(basicBlock));
             }
         }
 
@@ -159,6 +217,11 @@ public sealed interface AST {
                 rhs.accept(visitor);
                 visitor.expression(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                return basicBlock.sub(this.type.value.llvm(), lhs.llvm(basicBlock), rhs.llvm(basicBlock));
+            }
         }
 
         record Mul(Expression lhs, Expression rhs, Mutable<Type> type) implements Expression {
@@ -167,6 +230,11 @@ public sealed interface AST {
                 lhs.accept(visitor);
                 rhs.accept(visitor);
                 visitor.expression(this);
+            }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                return basicBlock.mul(this.type.value.llvm(), lhs.llvm(basicBlock), rhs.llvm(basicBlock));
             }
         }
 
@@ -177,6 +245,11 @@ public sealed interface AST {
                 rhs.accept(visitor);
                 visitor.expression(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                return basicBlock.sdiv(this.type.value.llvm(), lhs.llvm(basicBlock), rhs.llvm(basicBlock));
+            }
         }
 
         record Negate(Expression value, Mutable<Type> type) implements Expression {
@@ -185,15 +258,27 @@ public sealed interface AST {
                 visitor.expression(value);
                 visitor.expression(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                throw new UnsupportedOperationException("WIP");
+            }
         }
 
         record Invoke(Expression base, List<Expression> arguments, Mutable<Type> type) implements Expression {
             @Override
             public void accept(Visitor visitor) {
                 visitor.expression(base);
-                for(var arg : arguments)
+                for (var arg : arguments)
                     visitor.expression(arg);
                 visitor.expression(this);
+            }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                switch (this.base) {
+                    default -> throw new UnsupportedOperationException("WIP");
+                }
             }
         }
 
@@ -204,9 +289,17 @@ public sealed interface AST {
                 visitor.expression(subscriptWith);
                 visitor.expression(this);
             }
+
+            @Override
+            public Value llvm(BasicBlock basicBlock) {
+                throw new UnsupportedOperationException("WIP");
+            }
         }
 
         Mutable<Type> type();
+
         void accept(Visitor visitor);
+
+        Value llvm(BasicBlock basicBlock);
     }
 }
