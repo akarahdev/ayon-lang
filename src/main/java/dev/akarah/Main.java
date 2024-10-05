@@ -24,7 +24,5 @@ public class Main {
         var parser = new Parser(new TokenReader(tok));
         var tree = parser.parseFunction();
         System.out.println(tree);
-
-        System.out.println(tree.toLLVM());
     }
 }
