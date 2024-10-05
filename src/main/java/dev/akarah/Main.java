@@ -5,6 +5,7 @@ import dev.akarah.lang.lexer.StringReader;
 import dev.akarah.lang.lexer.Token;
 import dev.akarah.lang.parser.Parser;
 import dev.akarah.lang.parser.TokenReader;
+import dev.akarah.lang.tree.FunctionTypeDecorator;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,6 +24,14 @@ public class Main {
 
         var parser = new Parser(new TokenReader(tok));
         var tree = parser.parseFunction();
+        System.out.println(tree);
+
+        var ftd = new FunctionTypeDecorator();
+        ftd.functions.put(tree.name(), tree);
+        ftd.header(tree);
+
+        tree.visit(ftd);
+
         System.out.println(tree);
     }
 }
