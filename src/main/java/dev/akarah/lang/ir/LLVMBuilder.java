@@ -94,6 +94,11 @@ public class LLVMBuilder {
                     variableDeclaration.name(),
                     basicBlock.alloca(variableDeclaration.type().v.llvm())
                 );
+                basicBlock.store(
+                    variableDeclaration.type().v.llvm(),
+                    walkExpression(variableDeclaration.value()),
+                    astFunction.codeTypeInformation().v.llvmLocals.get(variableDeclaration.name())
+                );
             }
             case AST.Statement.ReturnValue returnValue -> {
                 System.out.println(returnValue);
