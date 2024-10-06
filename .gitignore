@@ -12,6 +12,7 @@ build/
 .idea/
 .gradle/
 example/
+example/build
 *.iws
 *.iml
 *.ipr

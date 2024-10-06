@@ -101,8 +101,6 @@ public class LLVMBuilder {
                 );
             }
             case AST.Statement.ReturnValue returnValue -> {
-                System.out.println(returnValue);
-                System.out.println(returnValue.value().type());
                 if(returnValue.value().type().v.llvm().equals(Types.VOID)) {
                     basicBlock.ret();
                 } else {

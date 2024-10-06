@@ -1,6 +1,7 @@
 package dev.akarah.lang.tree;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -17,6 +18,11 @@ public sealed interface AST {
     record Program(
         List<Header> headers
     ) implements AST {
+        public Program join(Program other) {
+            var list = new ArrayList<Header>(headers);
+            list.addAll(other.headers);
+            return new Program(list);
+        }
     }
 
     sealed interface Header extends AST {

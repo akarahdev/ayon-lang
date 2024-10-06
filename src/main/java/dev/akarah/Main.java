@@ -13,26 +13,27 @@ import dev.akarah.lang.tree.ProgramTypeInformation;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        var f = Files.readString(Path.of("./example/hello.ayon"));
-        var tok = new Lexer(new StringReader(f, "./example/hello.ayon")).lex();
-        System.out.println(
-            tok.stream().map(Token::toString).collect(Collectors.joining("\n"))
-        );
 
-        System.out.println("----");
+        final AST.Program[] program = {new AST.Program(new ArrayList<>())};
+        Files.walk(Path.of("./src/")).forEach(file -> {
+            try {
+                var contents = Files.readString(file);
+                var tokens = new Lexer(new StringReader(contents, file.getFileName().toString())).lex();
+                var parser = new Parser(new TokenReader(tokens));
+                program[0] = program[0].join(parser.parseAll());
+            } catch (IOException e) {
 
-        var parser = new Parser(new TokenReader(tok));
+            }
+        });
 
-        var program = parser.parseAll();
+        System.out.println(program[0]);
 
-        System.out.println(program.headers().size());
-
-        for(var header : program.headers()) {
-            System.out.println("Pre-processing header: " + header);
+        for(var header : program[0].headers()) {
             switch (header) {
                 case AST.Header.Function function -> {
                     ProgramTypeInformation.functions.put(function.name(), new AST.Header.FunctionDeclaration(
@@ -47,24 +48,19 @@ public class Main {
             }
         }
 
-        for(var header : program.headers()) {
-            System.out.println("Typechecking header: " + header);
+        for(var header : program[0].headers()) {
             switch (header) {
                 case AST.Header.Function function -> {
-                    System.out.println(function);
-
                     var ftd = new FunctionTypeInformation();
                     ftd.header(function);
 
                     function.visit(ftd);
                     function.codeTypeInformation().v = ftd;
-
-                    System.out.println("fd: " + function);
                 }
                 case AST.Header.FunctionDeclaration functionDeclaration -> {}
             }
         }
 
-        new LLVMBuilder().walkProgram(program);
+        new LLVMBuilder().walkProgram(program[0]);
     }
 }

@@ -15,7 +15,6 @@ public class FunctionTypeInformation implements AST.Visitor {
                 for(var param : function.parameters().keySet()) {
                     locals.put(param, function.parameters().get(param));
                 }
-                System.out.println("LOCALS: " + locals);
             }
             default -> {}
         }
@@ -38,7 +37,6 @@ public class FunctionTypeInformation implements AST.Visitor {
 
     @Override
     public void expression(AST.Expression expression) {
-        System.out.println("Expring: " + expression);
         switch (expression) {
             case AST.Expression.IntegerLiteral il -> {
                 if(il.type().v == null) {
@@ -80,7 +78,6 @@ public class FunctionTypeInformation implements AST.Visitor {
             case AST.Expression.Invoke invoke -> {
                 switch (invoke.base()) {
                     case AST.Expression.VariableLiteral variableLiteral -> {
-                        System.out.println(variableLiteral);
                         invoke.type().v = ProgramTypeInformation.functions.get(variableLiteral.name()).returnType();
                     }
                     default -> throw new IllegalStateException("uhhh not available yet sowwy");
@@ -97,6 +94,5 @@ public class FunctionTypeInformation implements AST.Visitor {
 
             }
         }
-        System.out.println("Expring 2: " + expression);
     }
 }

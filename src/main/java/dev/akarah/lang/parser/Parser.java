@@ -28,13 +28,11 @@ public class Parser {
 
         while (true) {
             skipWhitespace();
-            System.out.println(tokenReader.peek());
             if (tokenReader.peek() instanceof Token.EOF) {
                 break;
             }
             headers.add(parseHeader());
             skipWhitespace();
-            System.out.println(tokenReader.peek());
             if (tokenReader.peek() instanceof Token.EOF) {
                 break;
             }
@@ -178,7 +176,6 @@ public class Parser {
         skipWhitespace();
         while (!(tokenReader.peek() instanceof Token.CloseBrace)) {
             stmt.add(parseStatement());
-            System.out.println(stmt);
             tokenReader.match(it -> it instanceof Token.NewLine);
             skipWhitespace();
         }
@@ -321,10 +318,6 @@ public class Parser {
                     case "if" -> {
 
                         var condition = parseExpression();
-
-                        System.out.println(tokenReader.peek());
-
-                        System.out.println(condition);
                         var ifTrueBlock = parseCodeBlock();
 
                         if (tokenReader.peek() instanceof Token.Keyword tk && tk.keyword().equals("else")) {
