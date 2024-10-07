@@ -1,4 +1,10 @@
-package dev.akarah.lang.tree;
+package dev.akarah.lang.ast;
+
+import dev.akarah.lang.ast.header.Header;
+import dev.akarah.lang.ast.stmt.Statement;
+import dev.akarah.lang.tree.FunctionTypeInformation;
+import dev.akarah.lang.tree.Mutable;
+import dev.akarah.lang.tree.Type;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -6,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.TreeMap;
 
-public sealed interface AST {
+public interface AST {
     interface Visitor {
         void header(Header header);
 
@@ -15,82 +21,7 @@ public sealed interface AST {
         void expression(Expression expression);
     }
 
-    record Program(
-        List<Header> headers
-    ) implements AST {
-        public Program join(Program other) {
-            var list = new ArrayList<Header>(headers);
-            list.addAll(other.headers);
-            return new Program(list);
-        }
-    }
-
-    sealed interface Header extends AST {
-        record Function(
-            String name,
-            TreeMap<String, Type> parameters,
-            Type returnType,
-            Expression.CodeBlock codeBlock,
-            Mutable<FunctionTypeInformation> codeTypeInformation
-        ) implements Header {
-
-            public void visit(AST.Visitor visitor) {
-                visitor.header(this);
-                codeBlock.accept(visitor);
-            }
-        }
-
-        record FunctionDeclaration(
-            String name,
-            TreeMap<String, Type> parameters,
-            Type returnType
-        ) implements Header {
-            public void visit(AST.Visitor visitor) {
-                visitor.header(this);
-            }
-        }
-    }
-
-    sealed interface Statement extends AST {
-        record VariableDeclaration(
-            String name,
-            Mutable<Type> type,
-            Expression value
-        ) implements Statement {
-
-            @Override
-            public void accept(Visitor visitor) {
-                value.accept(visitor);
-                visitor.statement(this);
-            }
-        }
-
-        record ReturnValue(
-            Expression value
-        ) implements Statement {
-            @Override
-            public void accept(Visitor visitor) {
-                value.accept(visitor);
-                visitor.statement(this);
-            }
-        }
-
-        record WhileLoop(
-            Expression condition,
-            Expression runWhile
-        ) implements Statement {
-            @Override
-            public void accept(Visitor visitor) {
-                condition.accept(visitor);
-                runWhile.accept(visitor);
-                visitor.statement(this);
-            }
-        }
-
-        void accept(Visitor visitor);
-    }
-
-    sealed interface Expression extends AST, AST.Statement {
+    sealed interface Expression extends AST, Statement {
         record CodeBlock(List<Statement> statements, Mutable<Type> type) implements Expression {
             @Override
             public void accept(Visitor visitor) {

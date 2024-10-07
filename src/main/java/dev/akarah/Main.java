@@ -4,7 +4,7 @@ import dev.akarah.lang.lexer.Lexer;
 import dev.akarah.lang.lexer.StringReader;
 import dev.akarah.lang.parser.Parser;
 import dev.akarah.lang.parser.TokenReader;
-import dev.akarah.lang.tree.AST;
+import dev.akarah.lang.ast.AST;
 import dev.akarah.lang.tree.FunctionTypeInformation;
 import dev.akarah.lang.tree.ProgramTypeInformation;
 
@@ -52,7 +52,7 @@ public class Main {
                     ftd.header(function);
 
                     function.visit(ftd);
-                    function.codeTypeInformation().v = ftd;
+                    function.codeTypeInformation().value = ftd;
 
                     System.out.println(function);
                 }

@@ -2,7 +2,7 @@ package dev.akarah.lang.parser;
 
 import dev.akarah.lang.Reader;
 import dev.akarah.lang.lexer.Token;
-import dev.akarah.lang.tree.AST;
+import dev.akarah.lang.ast.AST;
 import dev.akarah.lang.tree.Mutable;
 import dev.akarah.lang.tree.Type;
 
@@ -197,7 +197,7 @@ public class Parser {
                     var ty = new Mutable<Type>();
                     if (tokenReader.peek() instanceof Token.Colon) {
                         tokenReader.read();
-                        ty.v = parseType();
+                        ty.value = parseType();
                     }
 
                     tokenReader.match(it -> it instanceof Token.Equals);

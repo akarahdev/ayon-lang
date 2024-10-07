@@ -1,19 +1,28 @@
 package dev.akarah.lang.tree;
 
 public class Mutable<T> {
-    public T v;
+    public T value;
+
+    public Mutable<T> set(T value) {
+        this.value = value;
+        return this;
+    }
+
+    public T get() {
+        return this.value;
+    }
 
     public Mutable() {
-        this.v = null;
+        this.value = null;
     }
 
     public Mutable(T value) {
-        this.v = value;
+        this.value = value;
     }
 
     public String toString() {
-        if(this.v == null)
+        if(this.value == null)
             return "null";
-        return this.v.toString();
+        return this.value.toString();
     }
 }
