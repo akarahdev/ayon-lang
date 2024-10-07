@@ -2,19 +2,16 @@ package dev.akarah;
 
 import dev.akarah.lang.lexer.Lexer;
 import dev.akarah.lang.lexer.StringReader;
-import dev.akarah.lang.lexer.Token;
 import dev.akarah.lang.parser.Parser;
 import dev.akarah.lang.parser.TokenReader;
 import dev.akarah.lang.tree.AST;
 import dev.akarah.lang.tree.FunctionTypeInformation;
-import dev.akarah.lang.ir.LLVMBuilder;
 import dev.akarah.lang.tree.ProgramTypeInformation;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) throws IOException {
@@ -56,11 +53,13 @@ public class Main {
 
                     function.visit(ftd);
                     function.codeTypeInformation().v = ftd;
+
+                    System.out.println(function);
                 }
-                case AST.Header.FunctionDeclaration functionDeclaration -> {}
+                case AST.Header.FunctionDeclaration functionDeclaration -> {
+                    System.out.println(functionDeclaration);
+                }
             }
         }
-
-        new LLVMBuilder().walkProgram(program[0]);
     }
 }
