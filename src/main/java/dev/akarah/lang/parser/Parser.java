@@ -1,5 +1,7 @@
 package dev.akarah.lang.parser;
 
+import dev.akarah.lang.ast.block.CodeBlock;
+import dev.akarah.lang.ast.block.CodeBlockData;
 import dev.akarah.util.Reader;
 import dev.akarah.lang.ast.Program;
 import dev.akarah.lang.ast.expr.*;
@@ -15,6 +17,7 @@ import dev.akarah.util.Mutable;
 import dev.akarah.lang.ast.Type;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -157,8 +160,7 @@ public class Parser {
                 ident.literal(),
                 params,
                 returnType,
-                parseCodeBlock(),
-                new Mutable<>()
+                parseCodeBlock()
             );
         } else {
             tokenReader.match(it -> it instanceof Token.Equals);
@@ -168,9 +170,8 @@ public class Parser {
                 returnType,
                 new CodeBlock(
                     List.of(new ReturnValue(parseExpression())),
-                    new Mutable<>()
-                ),
-                new Mutable<>()
+                    new CodeBlockData(new HashMap<>())
+                )
             );
         }
     }
@@ -189,7 +190,7 @@ public class Parser {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.CloseBrace);
 
-        return new CodeBlock(stmt, new Mutable<>());
+        return new CodeBlock(stmt, new CodeBlockData(new HashMap<>()));
     }
 
     public Statement parseStatement() {
@@ -201,9 +202,16 @@ public class Parser {
 
                     var cond = parseExpression();
                     var ifTrue = parseCodeBlock();
-                    var ifFalse = parseCodeBlock();
+                    if(tokenReader.peek() instanceof Token.Keyword tk && tk.keyword().equals("else")) {
+                        tokenReader.read();
+                        var ifFalse = parseCodeBlock();
+                        yield new IfStatement(cond, ifTrue, ifFalse);
+                    } else {
+                        yield new IfStatement(cond, ifTrue, new CodeBlock(List.of(), new CodeBlockData(new HashMap<>())));
+                    }
 
-                    yield new IfStatement(cond, ifTrue, ifFalse);
+
+
                 }
                 case "var" -> {
                     tokenReader.read();
@@ -312,10 +320,6 @@ public class Parser {
         return switch (this.tokenReader.read()) {
             case Token.IntegerLiteral il -> new IntegerLiteral(il.literal(), new Mutable<>());
             case Token.FloatingLiteral fl -> new FloatingLiteral(fl.literal(), new Mutable<>());
-            case Token.OpenBrace ob -> {
-                tokenReader.backtrack();
-                yield parseCodeBlock();
-            }
             case Token.IdentifierLiteral vr -> switch (vr.literal()) {
                 case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
                 case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));

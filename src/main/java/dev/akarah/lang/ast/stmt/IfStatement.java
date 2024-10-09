@@ -1,6 +1,6 @@
 package dev.akarah.lang.ast.stmt;
 
-import dev.akarah.lang.ast.expr.CodeBlock;
+import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.expr.Expression;
 
 public record IfStatement(

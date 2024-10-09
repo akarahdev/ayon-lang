@@ -7,7 +7,7 @@ import dev.akarah.lang.lexer.Lexer;
 import dev.akarah.lang.lexer.StringReader;
 import dev.akarah.lang.parser.Parser;
 import dev.akarah.lang.parser.TokenReader;
-import dev.akarah.lang.ast.FunctionTypeInformation;
+import dev.akarah.lang.ast.FunctionTypeAnnotator;
 import dev.akarah.lang.ast.ProgramTypeInformation;
 
 import java.io.IOException;
@@ -51,11 +51,10 @@ public class Main {
         for(var header : program[0].headers()) {
             switch (header) {
                 case Function function -> {
-                    var ftd = new FunctionTypeInformation();
+                    var ftd = new FunctionTypeAnnotator();
                     ftd.header(function);
 
                     function.visit(ftd);
-                    function.codeTypeInformation().value = ftd;
 
                     System.out.println(function);
                 }
