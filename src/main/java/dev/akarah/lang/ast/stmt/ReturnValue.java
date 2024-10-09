@@ -1,9 +1,10 @@
 package dev.akarah.lang.ast.stmt;
 
 import dev.akarah.lang.ast.AST;
+import dev.akarah.lang.ast.expr.Expression;
 
-record ReturnValue(
-    AST.Expression value
+public record ReturnValue(
+    Expression value
 ) implements Statement {
     @Override
     public void accept(AST.Visitor visitor) {

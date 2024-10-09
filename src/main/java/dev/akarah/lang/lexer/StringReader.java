@@ -1,6 +1,6 @@
 package dev.akarah.lang.lexer;
 
-import dev.akarah.lang.Reader;
+import dev.akarah.util.Reader;
 import dev.akarah.lang.SpanData;
 
 import java.util.function.Predicate;

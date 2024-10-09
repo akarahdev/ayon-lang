@@ -1,4 +1,4 @@
-package dev.akarah.lang.tree;
+package dev.akarah.lang.ast;
 
 import dev.akarah.llvm.inst.Types;
 

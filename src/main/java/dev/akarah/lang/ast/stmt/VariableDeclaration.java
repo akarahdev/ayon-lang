@@ -1,17 +1,17 @@
 package dev.akarah.lang.ast.stmt;
 
-import dev.akarah.lang.ast.AST;
-import dev.akarah.lang.tree.Mutable;
-import dev.akarah.lang.tree.Type;
+import dev.akarah.lang.ast.expr.Expression;
+import dev.akarah.util.Mutable;
+import dev.akarah.lang.ast.Type;
 
-record VariableDeclaration(
+public record VariableDeclaration(
     String name,
     Mutable<Type> type,
-    AST.Expression value
+    Expression value
 ) implements Statement {
 
     @Override
-    public void accept(AST.Visitor visitor) {
+    public void accept(Visitor visitor) {
         value.accept(visitor);
         visitor.statement(this);
     }

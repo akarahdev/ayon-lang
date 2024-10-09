@@ -1,14 +1,21 @@
 package dev.akarah.lang.parser;
 
-import dev.akarah.lang.Reader;
+import dev.akarah.util.Reader;
+import dev.akarah.lang.ast.Program;
+import dev.akarah.lang.ast.expr.*;
+import dev.akarah.lang.ast.header.Function;
+import dev.akarah.lang.ast.header.FunctionDeclaration;
+import dev.akarah.lang.ast.header.Header;
+import dev.akarah.lang.ast.stmt.IfStatement;
+import dev.akarah.lang.ast.stmt.ReturnValue;
+import dev.akarah.lang.ast.stmt.Statement;
+import dev.akarah.lang.ast.stmt.VariableDeclaration;
 import dev.akarah.lang.lexer.Token;
-import dev.akarah.lang.ast.AST;
-import dev.akarah.lang.tree.Mutable;
-import dev.akarah.lang.tree.Type;
+import dev.akarah.util.Mutable;
+import dev.akarah.lang.ast.Type;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.TreeMap;
 
 public class Parser {
@@ -23,8 +30,8 @@ public class Parser {
             tokenReader.read();
     }
 
-    public AST.Program parseAll() {
-        var headers = new ArrayList<AST.Header>();
+    public Program parseAll() {
+        var headers = new ArrayList<Header>();
 
         while (true) {
             skipWhitespace();
@@ -37,10 +44,10 @@ public class Parser {
                 break;
             }
         }
-        return new AST.Program(headers);
+        return new Program(headers);
     }
 
-    public AST.Header parseHeader() {
+    public Header parseHeader() {
         skipWhitespace();
         if (tokenReader.peek() instanceof Token.Keyword keyword) {
             switch (keyword.keyword()) {
@@ -58,7 +65,7 @@ public class Parser {
         throw new RuntimeException("??? " + tokenReader.peek());
     }
 
-    public AST.Header.FunctionDeclaration parseFunctionDeclaration() {
+    public FunctionDeclaration parseFunctionDeclaration() {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("declare"));
         skipWhitespace();
@@ -99,14 +106,14 @@ public class Parser {
         var returnType = parseType();
         skipWhitespace();
 
-        return new AST.Header.FunctionDeclaration(
+        return new FunctionDeclaration(
             ident.literal(),
             params,
             returnType
         );
     }
 
-    public AST.Header.Function parseFunction() {
+    public Function parseFunction() {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("fn"));
         skipWhitespace();
@@ -146,7 +153,7 @@ public class Parser {
         var returnType = parseType();
         skipWhitespace();
         if (tokenReader.peek() instanceof Token.OpenBrace) {
-            return new AST.Header.Function(
+            return new Function(
                 ident.literal(),
                 params,
                 returnType,
@@ -155,12 +162,12 @@ public class Parser {
             );
         } else {
             tokenReader.match(it -> it instanceof Token.Equals);
-            return new AST.Header.Function(
+            return new Function(
                 ident.literal(),
                 new TreeMap<>(),
                 returnType,
-                new AST.Expression.CodeBlock(
-                    List.of(new AST.Statement.ReturnValue(parseExpression())),
+                new CodeBlock(
+                    List.of(new ReturnValue(parseExpression())),
                     new Mutable<>()
                 ),
                 new Mutable<>()
@@ -168,8 +175,8 @@ public class Parser {
         }
     }
 
-    public AST.Expression.CodeBlock parseCodeBlock() {
-        var stmt = new ArrayList<AST.Statement>();
+    public CodeBlock parseCodeBlock() {
+        var stmt = new ArrayList<Statement>();
 
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.OpenBrace);
@@ -182,13 +189,22 @@ public class Parser {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.CloseBrace);
 
-        return new AST.Expression.CodeBlock(stmt, new Mutable<>());
+        return new CodeBlock(stmt, new Mutable<>());
     }
 
-    public AST.Statement parseStatement() {
+    public Statement parseStatement() {
         skipWhitespace();
         return switch (this.tokenReader.peek()) {
             case Token.Keyword kw -> switch (kw.keyword()) {
+                case "if" -> {
+                    tokenReader.read();
+
+                    var cond = parseExpression();
+                    var ifTrue = parseCodeBlock();
+                    var ifFalse = parseCodeBlock();
+
+                    yield new IfStatement(cond, ifTrue, ifFalse);
+                }
                 case "var" -> {
                     tokenReader.read();
 
@@ -204,13 +220,13 @@ public class Parser {
 
                     var expr = parseExpression();
 
-                    yield new AST.Statement.VariableDeclaration(name.literal(), ty, expr);
+                    yield new VariableDeclaration(name.literal(), ty, expr);
                 }
                 case "return" -> {
                     tokenReader.read();
 
                     var expr = parseExpression();
-                    yield new AST.Statement.ReturnValue(expr);
+                    yield new ReturnValue(expr);
                 }
                 default -> parseExpression();
             };
@@ -218,92 +234,92 @@ public class Parser {
         };
     }
 
-    public AST.Expression parseExpression() {
+    public Expression parseExpression() {
         return parseFactor();
     }
 
-    public AST.Expression parseFactor() {
+    public Expression parseFactor() {
         var expr = parseTerm();
         while (true) {
             if (tokenReader.peek() instanceof Token.Star) {
                 tokenReader.match(it -> it instanceof Token.Star);
                 var rhs = parseTerm();
-                expr = new AST.Expression.Mul(expr, rhs, new Mutable<>());
+                expr = new Mul(expr, rhs, new Mutable<>());
             } else if (tokenReader.peek() instanceof Token.Slash) {
                 tokenReader.match(it -> it instanceof Token.Slash);
                 var rhs = parseTerm();
-                expr = new AST.Expression.Div(expr, rhs, new Mutable<>());
+                expr = new Div(expr, rhs, new Mutable<>());
             } else break;
         }
         return expr;
     }
 
-    public AST.Expression parseTerm() {
+    public Expression parseTerm() {
         var expr = parseNegation();
         while (true) {
             if (tokenReader.peek() instanceof Token.Plus) {
                 tokenReader.match(it -> it instanceof Token.Plus);
                 var rhs = parseTerm();
-                expr = new AST.Expression.Add(expr, rhs, new Mutable<>());
+                expr = new Add(expr, rhs, new Mutable<>());
             } else if (tokenReader.peek() instanceof Token.Minus) {
                 tokenReader.match(it -> it instanceof Token.Minus);
                 var rhs = parseTerm();
-                expr = new AST.Expression.Sub(expr, rhs, new Mutable<>());
+                expr = new Sub(expr, rhs, new Mutable<>());
             } else break;
         }
         return expr;
     }
 
-    public AST.Expression parseNegation() {
+    public Expression parseNegation() {
         var expr = parsePostfixExpression();
         while (true) {
             if (tokenReader.peek() instanceof Token.Minus) {
                 tokenReader.match(it -> it instanceof Token.Minus);
-                expr = new AST.Expression.Negate(expr, new Mutable<>());
+                expr = new Negate(expr, new Mutable<>());
             } else break;
         }
         return expr;
     }
 
 
-    public AST.Expression parsePostfixExpression() {
+    public Expression parsePostfixExpression() {
         var expr = parseBaseExpression();
         while (true) {
             if (tokenReader.peek() instanceof Token.OpenBracket op) {
                 tokenReader.match(it -> it instanceof Token.OpenBracket);
                 var index = parseExpression();
                 tokenReader.match(it -> it instanceof Token.CloseBracket);
-                expr = new AST.Expression.Subscript(expr, index, new Mutable<>());
+                expr = new Subscript(expr, index, new Mutable<>());
             } else if (tokenReader.peek() instanceof Token.OpenParen op) {
                 tokenReader.match(it -> it instanceof Token.OpenParen);
-                var exprs = new ArrayList<AST.Expression>();
+                var exprs = new ArrayList<Expression>();
                 while (!(tokenReader.peek() instanceof Token.CloseParen)) {
                     exprs.add(parseExpression());
                     if (!(tokenReader.peek() instanceof Token.CloseParen))
                         tokenReader.match(it -> it instanceof Token.Comma);
                 }
                 tokenReader.match(it -> it instanceof Token.CloseParen);
-                expr = new AST.Expression.Invoke(expr, exprs, new Mutable<>());
+                expr = new Invoke(expr, exprs, new Mutable<>());
             } else break;
         }
         return expr;
     }
 
 
-    public AST.Expression parseBaseExpression() {
+    public Expression parseBaseExpression() {
         skipWhitespace();
         var t = this.tokenReader.peek();
         return switch (this.tokenReader.read()) {
-            case Token.IntegerLiteral il -> new AST.Expression.IntegerLiteral(il.literal(), new Mutable<>());
-            case Token.FloatingLiteral fl -> new AST.Expression.FloatingLiteral(fl.literal(), new Mutable<>());
+            case Token.IntegerLiteral il -> new IntegerLiteral(il.literal(), new Mutable<>());
+            case Token.FloatingLiteral fl -> new FloatingLiteral(fl.literal(), new Mutable<>());
             case Token.OpenBrace ob -> {
                 tokenReader.backtrack();
                 yield parseCodeBlock();
             }
             case Token.IdentifierLiteral vr -> switch (vr.literal()) {
-                case "true" -> new AST.Expression.IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
-                case "false" -> new AST.Expression.IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
-                default -> new AST.Expression.VariableLiteral(vr.literal(), new Mutable<>());
+                case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
+                case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
+                default -> new VariableLiteral(vr.literal(), new Mutable<>());
             };
             case Token.OpenParen op -> {
                 var inner = parseExpression();
@@ -311,34 +327,7 @@ public class Parser {
                 yield inner;
             }
             case Token.StringLiteral sl -> {
-                yield new AST.Expression.CStringLiteral(sl.literal());
-            }
-            case Token.Keyword keyword -> {
-                switch (keyword.keyword()) {
-                    case "if" -> {
-
-                        var condition = parseExpression();
-                        var ifTrueBlock = parseCodeBlock();
-
-                        if (tokenReader.peek() instanceof Token.Keyword tk && tk.keyword().equals("else")) {
-                            tokenReader.read();
-                            yield new AST.Expression.Conditional(
-                                condition,
-                                ifTrueBlock,
-                                Optional.of(parseCodeBlock()),
-                                new Mutable<>()
-                            );
-                        } else {
-                            yield new AST.Expression.Conditional(
-                                condition,
-                                ifTrueBlock,
-                                Optional.empty(),
-                                new Mutable<>()
-                            );
-                        }
-                    }
-                    default -> throw new RuntimeException("bad at " + keyword);
-                }
+                yield new CStringLiteral(sl.literal());
             }
             default -> throw new RuntimeException("not an expression " + t);
         };

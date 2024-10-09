@@ -1,6 +1,10 @@
-package dev.akarah.lang.tree;
+package dev.akarah.lang.ast;
 
-import dev.akarah.lang.ast.AST;
+import dev.akarah.lang.ast.expr.*;
+import dev.akarah.lang.ast.header.Function;
+import dev.akarah.lang.ast.header.Header;
+import dev.akarah.lang.ast.stmt.Statement;
+import dev.akarah.lang.ast.stmt.VariableDeclaration;
 import dev.akarah.llvm.inst.Value;
 
 import java.util.HashMap;
@@ -10,9 +14,9 @@ public class FunctionTypeInformation implements AST.Visitor {
     public HashMap<String, Value> llvmLocals = new HashMap<>();
 
     @Override
-    public void header(AST.Header header) {
+    public void header(Header header) {
         switch (header) {
-            case AST.Header.Function function -> {
+            case Function function -> {
                 for(var param : function.parameters().keySet()) {
                     locals.put(param, function.parameters().get(param));
                 }
@@ -22,9 +26,9 @@ public class FunctionTypeInformation implements AST.Visitor {
     }
 
     @Override
-    public void statement(AST.Statement statement) {
+    public void statement(Statement statement) {
         switch (statement) {
-            case AST.Statement.VariableDeclaration variableDeclaration -> {
+            case VariableDeclaration variableDeclaration -> {
                 if(variableDeclaration.type().value != null) {
                     locals.put(variableDeclaration.name(), variableDeclaration.type().value);
                 } else {
@@ -37,9 +41,9 @@ public class FunctionTypeInformation implements AST.Visitor {
     }
 
     @Override
-    public void expression(AST.Expression expression) {
+    public void expression(Expression expression) {
         switch (expression) {
-            case AST.Expression.IntegerLiteral il -> {
+            case IntegerLiteral il -> {
                 if(il.type().value == null) {
                     if (il.integer() > Integer.MAX_VALUE)
                         il.type().value = new Type.Integer(64);
@@ -47,27 +51,14 @@ public class FunctionTypeInformation implements AST.Visitor {
                         il.type().value = new Type.Integer(32);
                 }
             }
-            case AST.Expression.Add add -> add.type().value = add.lhs().type().value;
-            case AST.Expression.ArrayLiteral arrayLiteral ->
+            case Add add -> add.type().value = add.lhs().type().value;
+            case ArrayLiteral arrayLiteral ->
                 arrayLiteral.type().value =
                     new Type.Array(arrayLiteral.values().getFirst().type().value, (long) arrayLiteral.values().size());
-            case AST.Expression.CodeBlock codeBlock -> {
+            case CodeBlock codeBlock -> {
             }
-            case AST.Expression.Conditional conditional -> {
-                if(conditional.ifFalse().isPresent()) {
-                    conditional.type().value = new Type.Union(
-                        conditional.ifTrue().type().value,
-                        conditional.ifFalse().get().type().value
-                    );
-                } else {
-                    conditional.type().value = new Type.Union(
-                        conditional.ifTrue().type().value,
-                        new Type.Unit()
-                    );
-                }
-            }
-            case AST.Expression.Div div -> div.type().value = div.lhs().type().value;
-            case AST.Expression.FloatingLiteral floatingLiteral -> {
+            case Div div -> div.type().value = div.lhs().type().value;
+            case FloatingLiteral floatingLiteral -> {
                 if(floatingLiteral.floating() >= Double.MAX_VALUE) {
                     floatingLiteral.type().value = new Type.F128();
                 } else if(floatingLiteral.floating() >= Float.MAX_VALUE) {
@@ -76,24 +67,25 @@ public class FunctionTypeInformation implements AST.Visitor {
                     floatingLiteral.type().value = new Type.F32();
                 }
             }
-            case AST.Expression.Invoke invoke -> {
+            case Invoke invoke -> {
                 switch (invoke.base()) {
-                    case AST.Expression.VariableLiteral variableLiteral -> {
+                    case VariableLiteral variableLiteral -> {
                         invoke.type().value = ProgramTypeInformation.functions.get(variableLiteral.name()).returnType();
                     }
                     default -> throw new IllegalStateException("uhhh not available yet sowwy");
                 }
             }
-            case AST.Expression.Mul mul -> mul.type().value = mul.lhs().type().value;
-            case AST.Expression.Negate negate -> negate.type().value = negate.value().type().value;
-            case AST.Expression.Sub sub -> sub.type().value = sub.lhs().type().value;
-            case AST.Expression.Subscript subscript -> {
+            case Mul mul -> mul.type().value = mul.lhs().type().value;
+            case Negate negate -> negate.type().value = negate.value().type().value;
+            case Sub sub -> sub.type().value = sub.lhs().type().value;
+            case Subscript subscript -> {
             }
-            case AST.Expression.VariableLiteral variableLiteral ->
+            case VariableLiteral variableLiteral ->
                 variableLiteral.type().value = locals.get(variableLiteral.name());
-            case AST.Expression.CStringLiteral stringLiteral -> {
+            case CStringLiteral stringLiteral -> {
 
             }
+            default -> throw new IllegalStateException("Unexpected value: " + expression);
         }
     }
 }

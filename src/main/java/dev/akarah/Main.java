@@ -1,12 +1,14 @@
 package dev.akarah;
 
+import dev.akarah.lang.ast.Program;
+import dev.akarah.lang.ast.header.Function;
+import dev.akarah.lang.ast.header.FunctionDeclaration;
 import dev.akarah.lang.lexer.Lexer;
 import dev.akarah.lang.lexer.StringReader;
 import dev.akarah.lang.parser.Parser;
 import dev.akarah.lang.parser.TokenReader;
-import dev.akarah.lang.ast.AST;
-import dev.akarah.lang.tree.FunctionTypeInformation;
-import dev.akarah.lang.tree.ProgramTypeInformation;
+import dev.akarah.lang.ast.FunctionTypeInformation;
+import dev.akarah.lang.ast.ProgramTypeInformation;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,7 +18,7 @@ import java.util.ArrayList;
 public class Main {
     public static void main(String[] args) throws IOException {
 
-        final AST.Program[] program = {new AST.Program(new ArrayList<>())};
+        final Program[] program = {new Program(new ArrayList<>())};
         Files.walk(Path.of("./src/")).forEach(file -> {
             try {
                 var contents = Files.readString(file);
@@ -32,22 +34,23 @@ public class Main {
 
         for(var header : program[0].headers()) {
             switch (header) {
-                case AST.Header.Function function -> {
-                    ProgramTypeInformation.functions.put(function.name(), new AST.Header.FunctionDeclaration(
+                case Function function -> {
+                    ProgramTypeInformation.functions.put(function.name(), new FunctionDeclaration(
                         function.name(),
                         function.parameters(),
                         function.returnType()
                     ));
                 }
-                case AST.Header.FunctionDeclaration functionDeclaration -> {
+                case FunctionDeclaration functionDeclaration -> {
                     ProgramTypeInformation.functions.put(functionDeclaration.name(), functionDeclaration);
                 }
+                default -> throw new IllegalStateException("Unexpected value: " + header);
             }
         }
 
         for(var header : program[0].headers()) {
             switch (header) {
-                case AST.Header.Function function -> {
+                case Function function -> {
                     var ftd = new FunctionTypeInformation();
                     ftd.header(function);
 
@@ -56,9 +59,10 @@ public class Main {
 
                     System.out.println(function);
                 }
-                case AST.Header.FunctionDeclaration functionDeclaration -> {
+                case FunctionDeclaration functionDeclaration -> {
                     System.out.println(functionDeclaration);
                 }
+                default -> throw new IllegalStateException("Unexpected value: " + header);
             }
         }
     }

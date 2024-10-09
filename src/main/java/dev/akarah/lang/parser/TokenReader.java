@@ -1,6 +1,6 @@
 package dev.akarah.lang.parser;
 
-import dev.akarah.lang.Reader;
+import dev.akarah.util.Reader;
 import dev.akarah.lang.SpanData;
 import dev.akarah.lang.lexer.Token;
 

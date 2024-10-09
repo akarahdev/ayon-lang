@@ -1,6 +1,6 @@
-package dev.akarah.lang;
+package dev.akarah.util;
 
-import dev.akarah.lang.lexer.Token;
+import dev.akarah.lang.SpanData;
 
 import java.util.function.Predicate;
 

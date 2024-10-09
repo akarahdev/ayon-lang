@@ -5,7 +5,7 @@ import dev.akarah.lang.ast.header.Header;
 import java.util.ArrayList;
 import java.util.List;
 
-record Program(
+public record Program(
     List<Header> headers
 ) implements AST {
     public Program join(Program other) {

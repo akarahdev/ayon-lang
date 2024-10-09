@@ -1,4 +1,4 @@
-package dev.akarah.lang.tree;
+package dev.akarah.util;
 
 public class Mutable<T> {
     public T value;
