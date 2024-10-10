@@ -43,7 +43,8 @@ public class ProgramTypeInformation {
             case Function function -> new FunctionDeclaration(
                 function.name(),
                 function.parameters(),
-                function.returnType()
+                function.returnType(),
+                function.attributes()
             );
             case FunctionDeclaration declaration -> declaration;
             default -> throw new IllegalStateException("Unexpected value: " + tmp);

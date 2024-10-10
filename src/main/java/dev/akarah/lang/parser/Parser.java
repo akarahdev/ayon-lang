@@ -5,10 +5,7 @@ import dev.akarah.lang.ast.Type;
 import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.block.CodeBlockData;
 import dev.akarah.lang.ast.expr.*;
-import dev.akarah.lang.ast.header.Function;
-import dev.akarah.lang.ast.header.FunctionDeclaration;
-import dev.akarah.lang.ast.header.Header;
-import dev.akarah.lang.ast.header.StructureDeclaration;
+import dev.akarah.lang.ast.header.*;
 import dev.akarah.lang.ast.stmt.IfStatement;
 import dev.akarah.lang.ast.stmt.ReturnValue;
 import dev.akarah.lang.ast.stmt.Statement;
@@ -51,25 +48,53 @@ public class Parser {
         return new Program(headers);
     }
 
+    public Attribute parseAttribute() {
+        var at = tokenReader.match(it -> it instanceof Token.At);
+        var ident = parseIdentifier();
+        var args = new ArrayList<Expression>();
+        if(tokenReader.peek() instanceof Token.OpenParen) {
+            tokenReader.match(it -> it instanceof Token.OpenParen);
+            skipWhitespace();
+            while(true) {
+                var expr = parseExpression();
+                args.add(expr);
+                if(!(tokenReader.peek() instanceof Token.Comma))
+                    break;
+            }
+            tokenReader.match(it -> it instanceof Token.CloseParen);
+            skipWhitespace();
+        }
+        return new Attribute(
+            ident,
+            args
+        );
+    }
+
     public Header parseHeader() {
         skipWhitespace();
+        var attrs = new ArrayList<Attribute>();
+        skipWhitespace();
+        while(tokenReader.peek() instanceof Token.At) {
+            attrs.add(parseAttribute());
+            skipWhitespace();
+        }
         if (tokenReader.peek() instanceof Token.Keyword keyword) {
             switch (keyword.keyword()) {
                 case "fn" -> {
-                    return parseFunction();
+                    return parseFunction(attrs);
                 }
                 case "record" -> {
-                    return parseStructureDeclaration();
+                    return parseStructureDeclaration(attrs);
                 }
                 case "declare" -> {
-                    return parseFunctionDeclaration();
+                    return parseFunctionDeclaration(attrs);
                 }
             }
         }
         throw new RuntimeException("??? " + tokenReader.peek());
     }
 
-    public StructureDeclaration parseStructureDeclaration() {
+    public StructureDeclaration parseStructureDeclaration(List<Attribute> attributes) {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("record"));
         var name = parseIdentifier();
@@ -91,12 +116,13 @@ public class Parser {
 
         return new StructureDeclaration(
             name,
-            parameters
+            parameters,
+            attributes
         );
 
     }
 
-    public FunctionDeclaration parseFunctionDeclaration() {
+    public FunctionDeclaration parseFunctionDeclaration(List<Attribute> attributes) {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("declare"));
         skipWhitespace();
@@ -141,11 +167,12 @@ public class Parser {
         return new FunctionDeclaration(
             ident,
             params,
-            returnType
+            returnType,
+            attributes
         );
     }
 
-    public Function parseFunction() {
+    public Function parseFunction(List<Attribute> attributes) {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("fn"));
         skipWhitespace();
@@ -191,7 +218,8 @@ public class Parser {
                 ident,
                 params,
                 returnType,
-                parseCodeBlock()
+                parseCodeBlock(),
+                attributes
             );
         } else {
             tokenReader.match(it -> it instanceof Token.Equals);
@@ -202,7 +230,8 @@ public class Parser {
                 new CodeBlock(
                     List.of(new ReturnValue(parseExpression())),
                     new CodeBlockData(new HashMap<>(), new HashMap<>())
-                )
+                ),
+                attributes
             );
         }
     }

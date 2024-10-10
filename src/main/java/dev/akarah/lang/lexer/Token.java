@@ -38,6 +38,7 @@ public sealed interface Token {
     record Percent(SpanData span) implements Token {}
     record Dollar(SpanData span) implements Token {}
     record Ampersand(SpanData span) implements Token {}
+    record At(SpanData span) implements Token {}
     record Line(SpanData span) implements Token {}
     record EOF(SpanData span) implements Token {}
 

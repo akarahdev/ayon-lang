@@ -119,6 +119,7 @@ public class Lexer {
                     case '}' -> tokens.add(new Token.CloseBrace(stringReader.generateSpan()));
                     case '=' -> tokens.add(new Token.Equals(stringReader.generateSpan()));
                     case '.' -> tokens.add(new Token.Period(stringReader.generateSpan()));
+                    case '@' -> tokens.add(new Token.At(stringReader.generateSpan()));
                     case '\n' -> tokens.add(new Token.NewLine(stringReader.generateSpan()));
                     case '\0' -> {
                         return tokens;
