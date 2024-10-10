@@ -209,9 +209,6 @@ public class Parser {
                     } else {
                         yield new IfStatement(cond, ifTrue, new CodeBlock(List.of(), new CodeBlockData(new HashMap<>())));
                     }
-
-
-
                 }
                 case "var" -> {
                     tokenReader.read();
