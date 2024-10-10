@@ -8,14 +8,9 @@ import dev.akarah.lang.ast.stmt.Statement;
 public interface AST {
     interface Visitor {
         void header(Header header);
-
         void beginCodeBlock(CodeBlock codeBlock);
         void endCodeBlock(CodeBlock codeBlock);
-
         void statement(Statement statement);
-
         void expression(Expression expression);
     }
-
-
 }

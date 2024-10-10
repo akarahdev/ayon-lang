@@ -22,15 +22,12 @@ public class Lexer {
             var
             let
             return
-            namespace
             sizeof
             enum
             record
             switch
             match
             default
-            box
-            new
             true
             false
             bool
@@ -66,7 +63,7 @@ public class Lexer {
                 var sb = new StringBuilder();
                 do {
                     sb.append(stringReader.read());
-                } while (Character.isJavaIdentifierPart(stringReader.peek()));
+                } while (Character.isJavaIdentifierPart(stringReader.peek()) && stringReader.peek() != '\0');
                 if(isKeyword(sb.toString())) {
                     tokens.add(new Token.Keyword(sb.toString(), stringReader.generateSpan()));
                 } else {
@@ -121,12 +118,16 @@ public class Lexer {
                     case '{' -> tokens.add(new Token.OpenBrace(stringReader.generateSpan()));
                     case '}' -> tokens.add(new Token.CloseBrace(stringReader.generateSpan()));
                     case '=' -> tokens.add(new Token.Equals(stringReader.generateSpan()));
+                    case '.' -> tokens.add(new Token.Period(stringReader.generateSpan()));
                     case '\n' -> tokens.add(new Token.NewLine(stringReader.generateSpan()));
                     case '\0' -> {
                         return tokens;
                     }
                     case ' ', '\r' -> {}
-                    default -> throw new RuntimeException("unknown char at " + stringReader.generateSpan());
+                    default -> {
+                        stringReader.backtrack();
+                        throw new RuntimeException("unknown char at " + stringReader.generateSpan() + " `" + stringReader.peek() + "`");
+                    }
                 }
             }
         }

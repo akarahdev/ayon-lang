@@ -91,7 +91,7 @@ public class FunctionTypeAnnotator implements AST.Visitor {
             case Invoke invoke -> {
                 switch (invoke.base()) {
                     case VariableLiteral variableLiteral -> {
-                        invoke.type().value = ProgramTypeInformation.functions.get(variableLiteral.name()).returnType();
+                        invoke.type().value = ProgramTypeInformation.resolveFunction(variableLiteral.name()).returnType();
                     }
                     default -> throw new IllegalStateException("uhhh not available yet sowwy");
                 }

@@ -1,7 +1,9 @@
 package dev.akarah.lang.parser;
 
+import com.sun.source.tree.Tree;
 import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.block.CodeBlockData;
+import dev.akarah.lang.ast.header.StructureDeclaration;
 import dev.akarah.util.Reader;
 import dev.akarah.lang.ast.Program;
 import dev.akarah.lang.ast.expr.*;
@@ -57,8 +59,8 @@ public class Parser {
                 case "fn" -> {
                     return parseFunction();
                 }
-                case "struct" -> {
-                    throw new RuntimeException("wip");
+                case "record" -> {
+                    return parseStructureDeclaration();
                 }
                 case "declare" -> {
                     return parseFunctionDeclaration();
@@ -66,6 +68,33 @@ public class Parser {
             }
         }
         throw new RuntimeException("??? " + tokenReader.peek());
+    }
+
+    public StructureDeclaration parseStructureDeclaration() {
+        skipWhitespace();
+        tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("record"));
+        var name = parseIdentifier();
+
+        var parameters = new TreeMap<String, Type>();
+        tokenReader.match(it -> it instanceof Token.OpenBrace);
+        skipWhitespace();
+
+        while(tokenReader.peek() instanceof Token.IdentifierLiteral il) {
+            skipWhitespace();
+            tokenReader.read();
+            var field = il.literal();
+            tokenReader.match(it -> it instanceof Token.Colon);
+            var ty = parseType();
+            parameters.put(field, ty);
+            skipWhitespace();
+        }
+        tokenReader.match(it -> it instanceof Token.CloseBrace);
+
+        return new StructureDeclaration(
+            name,
+            parameters
+        );
+
     }
 
     public FunctionDeclaration parseFunctionDeclaration() {
@@ -277,7 +306,7 @@ public class Parser {
     }
 
     public Expression parseNegation() {
-        var expr = parsePostfixExpression();
+        var expr = parseUfcs();
         while (true) {
             if (tokenReader.peek() instanceof Token.Minus) {
                 tokenReader.match(it -> it instanceof Token.Minus);
@@ -287,6 +316,27 @@ public class Parser {
         return expr;
     }
 
+    public Expression parseUfcs() {
+        var expr = parsePostfixExpression();
+        while(true) {
+            if(tokenReader.peek() instanceof Token.Period period) {
+                tokenReader.read();
+                var lhs = parseExpression();
+                if(lhs instanceof Invoke invoke) {
+                    invoke.arguments().addFirst(expr);
+                    expr = invoke;
+                } else {
+                    throw new RuntimeException(lhs + " must be an invocation trust me bro");
+                }
+
+            } else if(tokenReader.peek() instanceof Token.Arrow arrow) {
+
+            } else {
+                break;
+            }
+        }
+        return expr;
+    }
 
     public Expression parsePostfixExpression() {
         var expr = parseBaseExpression();
@@ -299,8 +349,11 @@ public class Parser {
             } else if (tokenReader.peek() instanceof Token.OpenParen op) {
                 tokenReader.match(it -> it instanceof Token.OpenParen);
                 var exprs = new ArrayList<Expression>();
+                skipWhitespace();
                 while (!(tokenReader.peek() instanceof Token.CloseParen)) {
+                    skipWhitespace();
                     exprs.add(parseExpression());
+                    skipWhitespace();
                     if (!(tokenReader.peek() instanceof Token.CloseParen))
                         tokenReader.match(it -> it instanceof Token.Comma);
                 }
@@ -324,7 +377,7 @@ public class Parser {
                 yield switch (parsed) {
                     case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
                     case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
-                    default -> new VariableLiteral(vr.literal(), new Mutable<>());
+                    default -> new VariableLiteral(parsed, new Mutable<>());
                 };
             }
             case Token.OpenParen op -> {
@@ -387,11 +440,11 @@ public class Parser {
                 var literal = parseIdentifier();
                 if (literal.startsWith("i")) {
                     yield new Type.Integer(Integer.parseInt(identifierLiteral.literal().replaceFirst("i", "")));
-                }
-                if (literal.startsWith("u")) {
+                } else if (literal.startsWith("u")) {
                     yield new Type.UnsignedInteger(Integer.parseInt(identifierLiteral.literal().replaceFirst("u", "")));
+                } else {
+                    yield new Type.UserStructure(literal);
                 }
-                throw new IllegalStateException("Unexpected value: " + literal);
             }
             default -> throw new IllegalStateException("Unexpected value: " + tokenReader.peek());
         };

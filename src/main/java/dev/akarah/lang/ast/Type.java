@@ -111,6 +111,16 @@ public sealed interface Type {
         }
     }
 
+    record UserStructure(String name) implements Type {
+        @Override
+        public dev.akarah.llvm.inst.Type llvm() {
+            throw new UnsupportedOperationException("WIP");
+        }
+
+        @Override
+        public long size() { throw new UnsupportedOperationException("WIP"); }
+    }
+
     dev.akarah.llvm.inst.Type llvm();
     long size();
 }

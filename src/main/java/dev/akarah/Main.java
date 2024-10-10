@@ -3,6 +3,7 @@ package dev.akarah;
 import dev.akarah.lang.ast.Program;
 import dev.akarah.lang.ast.header.Function;
 import dev.akarah.lang.ast.header.FunctionDeclaration;
+import dev.akarah.lang.ast.header.StructureDeclaration;
 import dev.akarah.lang.lexer.Lexer;
 import dev.akarah.lang.lexer.StringReader;
 import dev.akarah.lang.parser.Parser;
@@ -34,22 +35,21 @@ public class Main {
 
         for(var header : program[0].headers()) {
             switch (header) {
-                case Function function -> {
-                    ProgramTypeInformation.functions.put(function.name(), new FunctionDeclaration(
-                        function.name(),
-                        function.parameters(),
-                        function.returnType()
-                    ));
-                }
-                case FunctionDeclaration functionDeclaration -> {
-                    ProgramTypeInformation.functions.put(functionDeclaration.name(), functionDeclaration);
-                }
+                case Function function ->
+                    ProgramTypeInformation.registerFunction(function);
+                case FunctionDeclaration functionDeclaration ->
+                    ProgramTypeInformation.registerFunctionDeclaration(functionDeclaration);
+                case StructureDeclaration structureDeclaration ->
+                    ProgramTypeInformation.registerStructure(structureDeclaration);
                 default -> throw new IllegalStateException("Unexpected value: " + header);
             }
         }
 
         for(var header : program[0].headers()) {
             switch (header) {
+                case StructureDeclaration structureDeclaration -> {
+                    System.out.println(structureDeclaration);
+                }
                 case Function function -> {
                     var ftd = new FunctionTypeAnnotator();
                     ftd.header(function);
