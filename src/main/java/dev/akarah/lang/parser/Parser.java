@@ -74,7 +74,7 @@ public class Parser {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("fn"));
         skipWhitespace();
-        var ident = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
+        var ident = parseIdentifier();
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.OpenParen);
         var params = new TreeMap<String, Type>();
@@ -110,7 +110,7 @@ public class Parser {
         skipWhitespace();
 
         return new FunctionDeclaration(
-            ident.literal(),
+            ident,
             params,
             returnType
         );
@@ -120,7 +120,7 @@ public class Parser {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("fn"));
         skipWhitespace();
-        var ident = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
+        var ident = parseIdentifier();
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.OpenParen);
 
@@ -157,7 +157,7 @@ public class Parser {
         skipWhitespace();
         if (tokenReader.peek() instanceof Token.OpenBrace) {
             return new Function(
-                ident.literal(),
+                ident,
                 params,
                 returnType,
                 parseCodeBlock()
@@ -165,12 +165,12 @@ public class Parser {
         } else {
             tokenReader.match(it -> it instanceof Token.Equals);
             return new Function(
-                ident.literal(),
+                ident,
                 new TreeMap<>(),
                 returnType,
                 new CodeBlock(
                     List.of(new ReturnValue(parseExpression())),
-                    new CodeBlockData(new HashMap<>())
+                    new CodeBlockData(new HashMap<>(), new HashMap<>())
                 )
             );
         }
@@ -190,7 +190,7 @@ public class Parser {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.CloseBrace);
 
-        return new CodeBlock(stmt, new CodeBlockData(new HashMap<>()));
+        return new CodeBlock(stmt, new CodeBlockData(new HashMap<>(), new HashMap<>()));
     }
 
     public Statement parseStatement() {
@@ -207,7 +207,7 @@ public class Parser {
                         var ifFalse = parseCodeBlock();
                         yield new IfStatement(cond, ifTrue, ifFalse);
                     } else {
-                        yield new IfStatement(cond, ifTrue, new CodeBlock(List.of(), new CodeBlockData(new HashMap<>())));
+                        yield new IfStatement(cond, ifTrue, new CodeBlock(List.of(), new CodeBlockData(new HashMap<>(), new HashMap<>())));
                     }
                 }
                 case "var" -> {
@@ -216,6 +216,7 @@ public class Parser {
                     var name = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
 
                     var ty = new Mutable<Type>();
+
                     if (tokenReader.peek() instanceof Token.Colon) {
                         tokenReader.read();
                         ty.value = parseType();
@@ -317,11 +318,15 @@ public class Parser {
         return switch (this.tokenReader.read()) {
             case Token.IntegerLiteral il -> new IntegerLiteral(il.literal(), new Mutable<>());
             case Token.FloatingLiteral fl -> new FloatingLiteral(fl.literal(), new Mutable<>());
-            case Token.IdentifierLiteral vr -> switch (vr.literal()) {
-                case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
-                case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
-                default -> new VariableLiteral(vr.literal(), new Mutable<>());
-            };
+            case Token.IdentifierLiteral vr -> {
+                tokenReader.backtrack();
+                var parsed = parseIdentifier();
+                yield switch (parsed) {
+                    case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
+                    case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
+                    default -> new VariableLiteral(vr.literal(), new Mutable<>());
+                };
+            }
             case Token.OpenParen op -> {
                 var inner = parseExpression();
                 tokenReader.match(it -> it instanceof Token.CloseParen);
@@ -378,15 +383,26 @@ public class Parser {
                 default -> throw new IllegalStateException("Unexpected value: " + kw.keyword());
             };
             case Token.IdentifierLiteral identifierLiteral -> {
-                if (identifierLiteral.literal().startsWith("i")) {
+                tokenReader.backtrack();
+                var literal = parseIdentifier();
+                if (literal.startsWith("i")) {
                     yield new Type.Integer(Integer.parseInt(identifierLiteral.literal().replaceFirst("i", "")));
                 }
-                if (identifierLiteral.literal().startsWith("u")) {
+                if (literal.startsWith("u")) {
                     yield new Type.UnsignedInteger(Integer.parseInt(identifierLiteral.literal().replaceFirst("u", "")));
                 }
-                throw new IllegalStateException("Unexpected value: " + identifierLiteral);
+                throw new IllegalStateException("Unexpected value: " + literal);
             }
             default -> throw new IllegalStateException("Unexpected value: " + tokenReader.peek());
         };
+    }
+
+    public String parseIdentifier() {
+        var literal = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
+        if(tokenReader.peek() instanceof Token.DoubleColon doubleColon) {
+            tokenReader.read();
+            return literal.literal() + "::" + parseIdentifier();
+        }
+        return literal.literal();
     }
 }
