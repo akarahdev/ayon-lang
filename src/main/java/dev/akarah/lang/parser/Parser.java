@@ -1,22 +1,21 @@
 package dev.akarah.lang.parser;
 
-import com.sun.source.tree.Tree;
+import dev.akarah.lang.ast.Program;
+import dev.akarah.lang.ast.Type;
 import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.block.CodeBlockData;
-import dev.akarah.lang.ast.header.StructureDeclaration;
-import dev.akarah.util.Reader;
-import dev.akarah.lang.ast.Program;
 import dev.akarah.lang.ast.expr.*;
 import dev.akarah.lang.ast.header.Function;
 import dev.akarah.lang.ast.header.FunctionDeclaration;
 import dev.akarah.lang.ast.header.Header;
+import dev.akarah.lang.ast.header.StructureDeclaration;
 import dev.akarah.lang.ast.stmt.IfStatement;
 import dev.akarah.lang.ast.stmt.ReturnValue;
 import dev.akarah.lang.ast.stmt.Statement;
 import dev.akarah.lang.ast.stmt.VariableDeclaration;
 import dev.akarah.lang.lexer.Token;
 import dev.akarah.util.Mutable;
-import dev.akarah.lang.ast.Type;
+import dev.akarah.util.Reader;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,7 +78,7 @@ public class Parser {
         tokenReader.match(it -> it instanceof Token.OpenBrace);
         skipWhitespace();
 
-        while(tokenReader.peek() instanceof Token.IdentifierLiteral il) {
+        while (tokenReader.peek() instanceof Token.IdentifierLiteral il) {
             skipWhitespace();
             tokenReader.read();
             var field = il.literal();
@@ -127,7 +126,8 @@ public class Parser {
                 case Token.CloseParen closeParen -> {
                     break loop;
                 }
-                case Token.Comma comma -> {}
+                case Token.Comma comma -> {
+                }
                 default -> {
                 }
             }
@@ -174,7 +174,9 @@ public class Parser {
                 case Token.CloseParen closeParen -> {
                     break loop;
                 }
-                case Token.Comma comma -> { continue loop; }
+                case Token.Comma comma -> {
+                    continue loop;
+                }
                 default -> {
                 }
             }
@@ -231,7 +233,7 @@ public class Parser {
 
                     var cond = parseExpression();
                     var ifTrue = parseCodeBlock();
-                    if(tokenReader.peek() instanceof Token.Keyword tk && tk.keyword().equals("else")) {
+                    if (tokenReader.peek() instanceof Token.Keyword tk && tk.keyword().equals("else")) {
                         tokenReader.read();
                         var ifFalse = parseCodeBlock();
                         yield new IfStatement(cond, ifTrue, ifFalse);
@@ -318,18 +320,18 @@ public class Parser {
 
     public Expression parseUfcs() {
         var expr = parsePostfixExpression();
-        while(true) {
-            if(tokenReader.peek() instanceof Token.Period period) {
+        while (true) {
+            if (tokenReader.peek() instanceof Token.Period period) {
                 tokenReader.read();
                 var lhs = parseExpression();
-                if(lhs instanceof Invoke invoke) {
+                if (lhs instanceof Invoke invoke) {
                     invoke.arguments().addFirst(expr);
                     expr = invoke;
                 } else {
                     throw new RuntimeException(lhs + " must be an invocation trust me bro");
                 }
 
-            } else if(tokenReader.peek() instanceof Token.Arrow arrow) {
+            } else if (tokenReader.peek() instanceof Token.Arrow arrow) {
 
             } else {
                 break;
@@ -371,14 +373,15 @@ public class Parser {
         return switch (this.tokenReader.read()) {
             case Token.IntegerLiteral il -> new IntegerLiteral(il.literal(), new Mutable<>());
             case Token.FloatingLiteral fl -> new FloatingLiteral(fl.literal(), new Mutable<>());
+            case Token.Keyword kw -> switch (kw.keyword()) {
+                case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
+                case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
+                default -> throw new RuntimeException("uuhhh");
+            };
             case Token.IdentifierLiteral vr -> {
                 tokenReader.backtrack();
                 var parsed = parseIdentifier();
-                yield switch (parsed) {
-                    case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
-                    case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
-                    default -> new VariableLiteral(parsed, new Mutable<>());
-                };
+                yield new VariableLiteral(parsed, new Mutable<>());
             }
             case Token.OpenParen op -> {
                 var inner = parseExpression();
@@ -410,11 +413,11 @@ public class Parser {
 
     public Type parseType$2() {
         var base = parseType$3();
-        while(true) {
-            if(tokenReader.peek() instanceof Token.OpenBracket) {
+        while (true) {
+            if (tokenReader.peek() instanceof Token.OpenBracket) {
                 tokenReader.match(it -> it instanceof Token.OpenBracket);
                 var o = tokenReader.match(it -> it instanceof Token.IntegerLiteral || it instanceof Token.CloseBracket);
-                if(o instanceof Token.IntegerLiteral il) {
+                if (o instanceof Token.IntegerLiteral il) {
                     tokenReader.match(it -> it instanceof Token.CloseBracket);
                     base = new Type.Array(base, il.literal());
                 } else {
@@ -452,7 +455,7 @@ public class Parser {
 
     public String parseIdentifier() {
         var literal = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
-        if(tokenReader.peek() instanceof Token.DoubleColon doubleColon) {
+        if (tokenReader.peek() instanceof Token.DoubleColon doubleColon) {
             tokenReader.read();
             return literal.literal() + "::" + parseIdentifier();
         }
