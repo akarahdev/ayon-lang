@@ -96,7 +96,12 @@ public class FunctionTransformer {
 
             }
             case ReturnValue returnValue -> {
-                var e = buildExpression(returnValue.value(), codeBlock, true);
+                Value e = null;
+                if(returnValue.value().type().get() instanceof dev.akarah.lang.ast.Type.UserStructure userStructure) {
+                    e = buildExpression(returnValue.value(), codeBlock, true);
+                } else {
+                    e = buildExpression(returnValue.value(), codeBlock, true);
+                }
                 for(var variableName : codeBlock.data().localVariables().keySet()) {
                     if(codeBlock.data().localVariables().get(variableName) instanceof dev.akarah.lang.ast.Type.UserStructure) {
                         basicBlocks.peek().call(
@@ -157,9 +162,12 @@ public class FunctionTransformer {
 
                     for (var value : invoke.arguments()) {
                         System.out.println(value);
+                        Value newArg = null;
+                        System.out.println(value.type().get());
+                        newArg = buildExpression(value, codeBlock, true);
                         arguments.add(new Instruction.Call.Parameter(
                             value.type().get().llvm(),
-                            buildExpression(value, codeBlock, true)
+                            newArg
                         ));
                     }
                     yield basicBlocks.peek().call(
@@ -224,11 +232,11 @@ public class FunctionTransformer {
                 var targetFieldIndex = getIndexOf(targetStructureData.parameters(), access.field());
                 var ptr = basicBlocks.peek().getElementPtr(
                     ((Type.Ptr) access.expr().type().get().llvm()).subtype(),
-                    buildExpression(access.expr(), codeBlock, false),
+                    buildExpression(access.expr(), codeBlock, true),
                     Types.integer(32),
                     Constant.constant(0),
                     Types.integer(32),
-                    Constant.constant(targetFieldIndex)
+                    Constant.constant(targetFieldIndex+1)
                 );
                 if(dereferenceLocals) {
                     yield basicBlocks.peek().load(

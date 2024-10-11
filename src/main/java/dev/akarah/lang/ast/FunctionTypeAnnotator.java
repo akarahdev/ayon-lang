@@ -77,7 +77,7 @@ public class FunctionTypeAnnotator implements AST.Visitor {
             }
             case Add add -> add.type().value = add.lhs().type().value;
             case ArrayLiteral arrayLiteral -> arrayLiteral.type().value =
-                new Type.Array(arrayLiteral.values().getFirst().type().value, (long) arrayLiteral.values().size());
+                new Type.CArray(arrayLiteral.values().getFirst().type().value, (long) arrayLiteral.values().size());
             case Div div -> div.type().value = div.lhs().type().value;
             case FloatingLiteral floatingLiteral -> {
                 if (floatingLiteral.floating() >= Double.MAX_VALUE) {
@@ -101,14 +101,28 @@ public class FunctionTypeAnnotator implements AST.Visitor {
             case Sub sub -> sub.type().value = sub.lhs().type().value;
             case Subscript subscript -> {
             }
-            case VariableLiteral variableLiteral -> variableLiteral.type().value =
-                codeBlocks.peek().data().localVariables()
-                    .get(variableLiteral.name());
+            case VariableLiteral variableLiteral -> {
+                if(codeBlocks.peek().data().localVariables().containsKey(variableLiteral.name())) {
+                    variableLiteral.type().value =
+                        codeBlocks.peek().data().localVariables()
+                            .get(variableLiteral.name());
+                } else if(ProgramTypeInformation.headers.containsKey(variableLiteral.name())) {
+
+                } else {
+                    throw new RuntimeException("unable to resolve " + variableLiteral + ", not a valid expression");
+                }
+
+            }
             case CStringLiteral stringLiteral -> {}
             case BitCast bitCast -> {}
-            case InitStructure initStructure -> {}
+            case InitStructure initStructure -> {
+                initStructure.type().set(initStructure.type().get());
+            }
             case FieldAccess fieldAccess -> {
+                System.out.println(fieldAccess);
+                System.out.println(fieldAccess.expr());
                 var structure = (Type.UserStructure) fieldAccess.expr().type().get();
+                System.out.println(structure);
                 var resolved = ProgramTypeInformation.resolveStructure(structure.name());
                 var outputType = resolved.parameters().get(fieldAccess.field());
                 fieldAccess.type().set(outputType);

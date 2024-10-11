@@ -14,7 +14,7 @@ public record CStringLiteral(String contents) implements Expression {
     @Override
     public Mutable<Type> type() {
         return new Mutable<>(
-            new Type.Reference(new Type.Array(new Type.Integer(8), this.contents().getBytes(StandardCharsets.UTF_8).length + 1))
+            new Type.CStringPointer(new Type.CArray(new Type.Integer(8), this.contents().getBytes(StandardCharsets.UTF_8).length + 1))
         );
     }
 }

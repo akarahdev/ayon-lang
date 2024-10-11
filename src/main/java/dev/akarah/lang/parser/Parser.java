@@ -462,7 +462,7 @@ public class Parser {
         return switch (tokenReader.peek()) {
             case Token.Ampersand ampersand -> {
                 tokenReader.read();
-                yield new Type.Reference(parseType());
+                yield new Type.CStringPointer(parseType());
             }
             default -> parseType$2();
         };
@@ -476,9 +476,9 @@ public class Parser {
                 var o = tokenReader.match(it -> it instanceof Token.IntegerLiteral || it instanceof Token.CloseBracket);
                 if (o instanceof Token.IntegerLiteral il) {
                     tokenReader.match(it -> it instanceof Token.CloseBracket);
-                    base = new Type.Array(base, il.literal());
+                    base = new Type.CArray(base, il.literal());
                 } else {
-                    base = new Type.Array(base, 0);
+                    base = new Type.CArray(base, 0);
                 }
             } else break;
         }

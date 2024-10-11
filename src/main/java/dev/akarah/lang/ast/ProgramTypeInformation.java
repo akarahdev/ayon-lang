@@ -53,7 +53,12 @@ public class ProgramTypeInformation {
 
     public static StructureDeclaration resolveStructure(String name) {
         var tmp = headers.get(name);
-        assert tmp instanceof StructureDeclaration;
+        if(!headers.containsKey(name)) {
+            throw new RuntimeException("unable to resolve structure " + name);
+        }
+        if(!(tmp instanceof StructureDeclaration)) {
+            throw new RuntimeException(name + " is not a struct");
+        }
         return (StructureDeclaration) tmp;
     }
 }

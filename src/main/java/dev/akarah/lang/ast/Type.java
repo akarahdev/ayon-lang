@@ -75,7 +75,7 @@ public sealed interface Type {
         }
     }
 
-    record Array(Type type, long length) implements Type  {
+    record CArray(Type type, long length) implements Type  {
         @Override
         public dev.akarah.llvm.inst.Type llvm() {
             return Types.array((int) length, type.llvm());
@@ -87,7 +87,7 @@ public sealed interface Type {
         }
     }
 
-    record Reference(Type type) implements Type  {
+    record CStringPointer(Type type) implements Type  {
         @Override
         public dev.akarah.llvm.inst.Type llvm() {
             return Types.pointerTo(type.llvm());
