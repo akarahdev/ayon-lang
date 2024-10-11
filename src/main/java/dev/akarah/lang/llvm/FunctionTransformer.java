@@ -183,7 +183,19 @@ public class FunctionTransformer {
                 );
             }
             case InitStructure initStructure -> {
-                yield new Value.ZeroInitializer();
+                var ptr = basicBlocks.peek().call(
+                    Types.pointerTo(Types.VOID),
+                    new Value.GlobalVariable("malloc"),
+                    List.of(
+                        new Instruction.Call.Parameter(
+                            Types.integer(32), Constant.constant(initStructure.type().get().size())))
+                );
+                basicBlocks.peek().store(
+                    initStructure.type().get().llvm(),
+                    new Value.ZeroInitializer(),
+                    ptr
+                );
+                yield ptr;
             }
             case FieldAccess access -> {
                 var targetStructureType = ((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get());
@@ -191,7 +203,7 @@ public class FunctionTransformer {
                 var targetFieldType = targetStructureData.parameters().get(access.field());
                 var targetFieldIndex = getIndexOf(targetStructureData.parameters(), access.field());
                 var ptr = basicBlocks.peek().getElementPtr(
-                    access.expr().type().get().llvm(),
+                    ((Type.Ptr) access.expr().type().get().llvm()).subtype(),
                     buildExpression(access.expr(), codeBlock, false),
                     Types.integer(32),
                     Constant.constant(0),

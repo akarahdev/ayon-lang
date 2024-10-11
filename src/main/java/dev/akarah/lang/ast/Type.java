@@ -106,7 +106,7 @@ public sealed interface Type {
         }
 
         @Override
-        public long size() { return ProgramTypeInformation.resolveStructure(name).parameters().values().stream().mapToInt(it -> Math.toIntExact(it.size())).sum(); }
+        public long size() { return ProgramTypeInformation.resolveStructure(name).parameters().values().stream().mapToInt(it -> Math.toIntExact(it.size())).sum() + 2; }
     }
 
     dev.akarah.llvm.inst.Type llvm();

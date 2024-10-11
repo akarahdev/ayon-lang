@@ -17,11 +17,12 @@ public record StructureDeclaration(
     }
 
     public dev.akarah.llvm.inst.Type llvm() {
-        var types = new dev.akarah.llvm.inst.Type[this.parameters().size()];
-        int index = 0;
+        var types = new dev.akarah.llvm.inst.Type[this.parameters().size()+1];
+        int index = 1;
+        types[0] = new dev.akarah.llvm.inst.Type.Integer(16);
         for(var value : parameters.values()) {
             types[index++] = value.llvm();
         }
-        return new dev.akarah.llvm.inst.Type.Structure(types);
+        return new dev.akarah.llvm.inst.Type.Ptr(new dev.akarah.llvm.inst.Type.Structure(types));
     }
 }

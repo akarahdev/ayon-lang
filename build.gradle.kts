@@ -13,7 +13,7 @@ repositories {
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    implementation("com.github.akarahdev:llvm-builder:85d25a2")
+    implementation("com.github.akarahdev:llvm-builder:89b7910d70")
 }
 
 tasks.test {
