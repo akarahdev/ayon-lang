@@ -10,6 +10,7 @@ import dev.akarah.llvm.Module;
 import dev.akarah.llvm.cfg.BasicBlock;
 import dev.akarah.llvm.cfg.Function;
 import dev.akarah.llvm.inst.*;
+import dev.akarah.util.ReferenceCountingLibrary;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -95,9 +96,22 @@ public class FunctionTransformer {
 
             }
             case ReturnValue returnValue -> {
+                var e = buildExpression(returnValue.value(), codeBlock, true);
+                for(var variableName : codeBlock.data().localVariables().keySet()) {
+                    if(codeBlock.data().localVariables().get(variableName) instanceof dev.akarah.lang.ast.Type.UserStructure) {
+                        basicBlocks.peek().call(
+                            Types.integer(16),
+                            ReferenceCountingLibrary.DECREMENT_REFERENCE_COUNT,
+                            List.of(new Instruction.Call.Parameter(
+                                Types.pointerTo(Types.VOID),
+                                codeBlock.data().llvmVariables().get(variableName)
+                            ))
+                        );
+                    }
+                }
                 basicBlocks.peek().ret(
                     returnValue.value().type().get().llvm(),
-                    buildExpression(returnValue.value(), codeBlock, true)
+                    e
                 );
             }
             case Expression expression -> {
@@ -142,6 +156,7 @@ public class FunctionTransformer {
                     var arguments = new ArrayList<Instruction.Call.Parameter>();
 
                     for (var value : invoke.arguments()) {
+                        System.out.println(value);
                         arguments.add(new Instruction.Call.Parameter(
                             value.type().get().llvm(),
                             buildExpression(value, codeBlock, true)
@@ -194,6 +209,11 @@ public class FunctionTransformer {
                     initStructure.type().get().llvm(),
                     new Value.ZeroInitializer(),
                     ptr
+                );
+                basicBlocks.peek().call(
+                    Types.integer(16),
+                    ReferenceCountingLibrary.INCREMENT_REFERENCE_COUNT,
+                    List.of(new Instruction.Call.Parameter(Types.pointerTo(Types.VOID), ptr))
                 );
                 yield ptr;
             }

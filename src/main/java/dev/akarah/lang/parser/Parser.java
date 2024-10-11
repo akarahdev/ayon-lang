@@ -378,8 +378,6 @@ public class Parser {
                 } else {
                     throw new RuntimeException(lhs + " must be an invocation trust me bro");
                 }
-            } else if (tokenReader.peek() instanceof Token.Arrow arrow) {
-
             } else {
                 break;
             }
@@ -480,7 +478,7 @@ public class Parser {
                     tokenReader.match(it -> it instanceof Token.CloseBracket);
                     base = new Type.Array(base, il.literal());
                 } else {
-                    base = new Type.Array(base, -1);
+                    base = new Type.Array(base, 0);
                 }
             } else break;
         }

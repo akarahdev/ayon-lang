@@ -14,6 +14,7 @@ import dev.akarah.lang.ast.FunctionTypeAnnotator;
 import dev.akarah.lang.ast.ProgramTypeInformation;
 import dev.akarah.llvm.Module;
 import dev.akarah.llvm.inst.Value;
+import dev.akarah.util.ReferenceCountingLibrary;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -93,7 +94,7 @@ public class Main {
         }
 
         var module = Module.of("test-module");
-
+        module.withLibrary(new ReferenceCountingLibrary());
 
         for(var header : program[0].headers()) {
             switch (header) {
