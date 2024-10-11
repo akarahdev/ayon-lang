@@ -120,12 +120,7 @@ public class FunctionTransformer {
                         codeBlock.data().llvmVariables().get(variableLiteral.name())
                     );
                 } else {
-                    yield basicBlocks.peek().getElementPtr(
-                        codeBlock.data().localVariables().get(variableLiteral.name()).llvm(),
-                        codeBlock.data().llvmVariables().get(variableLiteral.name()),
-                        Types.integer(32),
-                        Constant.constant(0)
-                    );
+                    yield codeBlock.data().llvmVariables().get(variableLiteral.name());
                 }
             }
             case CStringLiteral cStringLiteral -> {
@@ -195,19 +190,21 @@ public class FunctionTransformer {
                 var targetStructureData = ProgramTypeInformation.resolveStructure(targetStructureType.name());
                 var targetFieldType = targetStructureData.parameters().get(access.field());
                 var targetFieldIndex = getIndexOf(targetStructureData.parameters(), access.field());
-                var elementPtr = basicBlocks.peek().getElementPtr(
-                    access.expr().type().value.llvm(),
+                var ptr = basicBlocks.peek().getElementPtr(
+                    access.expr().type().get().llvm(),
                     buildExpression(access.expr(), codeBlock, false),
+                    Types.integer(32),
+                    Constant.constant(0),
                     Types.integer(32),
                     Constant.constant(targetFieldIndex)
                 );
                 if(dereferenceLocals) {
                     yield basicBlocks.peek().load(
                        targetFieldType.llvm(),
-                        elementPtr
+                        ptr
                     );
                 } else {
-                    yield elementPtr;
+                    yield ptr;
                 }
             }
             case Store store -> {
