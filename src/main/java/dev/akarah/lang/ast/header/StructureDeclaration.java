@@ -4,10 +4,8 @@ import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.Type;
 import dev.akarah.lang.error.CompileError;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.TreeMap;
 
 public record StructureDeclaration(
     String name,
@@ -19,7 +17,7 @@ public record StructureDeclaration(
         visitor.header(this);
     }
 
-    public dev.akarah.llvm.inst.Type llvm() {
+    public dev.akarah.llvm.inst.Type llvmPtr() {
         try {
             var types = new dev.akarah.llvm.inst.Type[this.parameters().size()+1];
             int index = 1;
@@ -28,6 +26,20 @@ public record StructureDeclaration(
                 types[index++] = value.llvm(this.errorSpan());
             }
             return new dev.akarah.llvm.inst.Type.Ptr();
+        } catch (StackOverflowError stackOverflowError) {
+            throw new CompileError.RawMessage("cyclic dependency found", this.errorSpan());
+        }
+    }
+
+    public dev.akarah.llvm.inst.Type llvmStruct() {
+        try {
+            var types = new dev.akarah.llvm.inst.Type[this.parameters().size()+1];
+            int index = 1;
+            types[0] = new dev.akarah.llvm.inst.Type.Integer(16);
+            for(var value : parameters.values()) {
+                types[index++] = value.llvm(this.errorSpan());
+            }
+            return new dev.akarah.llvm.inst.Type.Structure(types);
         } catch (StackOverflowError stackOverflowError) {
             throw new CompileError.RawMessage("cyclic dependency found", this.errorSpan());
         }

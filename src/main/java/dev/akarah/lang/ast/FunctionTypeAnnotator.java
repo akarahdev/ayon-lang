@@ -6,6 +6,7 @@ import dev.akarah.lang.ast.header.Function;
 import dev.akarah.lang.ast.header.Header;
 import dev.akarah.lang.ast.stmt.Statement;
 import dev.akarah.lang.ast.stmt.VariableDeclaration;
+import dev.akarah.lang.error.CompileError;
 
 import java.util.Stack;
 
@@ -109,7 +110,7 @@ public class FunctionTypeAnnotator implements AST.Visitor {
                 } else if(ProgramTypeInformation.headers.containsKey(variableLiteral.name())) {
 
                 } else {
-                    throw new RuntimeException("unable to resolve " + variableLiteral + ", not a valid expression");
+                    throw new CompileError.RawMessage("unable to resolve type of `" + variableLiteral.name() + "`", variableLiteral.errorSpan());
                 }
 
             }
@@ -119,6 +120,7 @@ public class FunctionTypeAnnotator implements AST.Visitor {
                 initStructure.type().set(initStructure.type().get());
             }
             case FieldAccess fieldAccess -> {
+                this.expression(fieldAccess.expr());
                 var structure = (Type.UserStructure) fieldAccess.expr().type().get();
                 var resolved = ProgramTypeInformation.resolveStructure(structure.name(), fieldAccess.errorSpan());
                 var outputType = resolved.parameters().get(fieldAccess.field());

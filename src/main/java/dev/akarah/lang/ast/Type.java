@@ -103,7 +103,7 @@ public sealed interface Type {
     record UserStructure(String name) implements Type {
         @Override
         public dev.akarah.llvm.inst.Type llvm(SpanData span) {
-            return ProgramTypeInformation.resolveStructure(name, span).llvm();
+            return ProgramTypeInformation.resolveStructure(name, span).llvmPtr();
         }
 
         @Override

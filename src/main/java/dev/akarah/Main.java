@@ -1,5 +1,6 @@
 package dev.akarah;
 
+import dev.akarah.lang.ast.FunctionTypeChecker;
 import dev.akarah.lang.ast.Program;
 import dev.akarah.lang.ast.header.Function;
 import dev.akarah.lang.ast.header.FunctionDeclaration;
@@ -71,8 +72,11 @@ public class Main {
                     case Function function -> {
                         var ftd = new FunctionTypeAnnotator();
                         ftd.header(function);
-
                         function.visit(ftd);
+
+                        var ftc = new FunctionTypeChecker(function);
+                        ftc.header(function);
+                        function.visit(ftc);
                     }
                     case FunctionDeclaration functionDeclaration -> {
 

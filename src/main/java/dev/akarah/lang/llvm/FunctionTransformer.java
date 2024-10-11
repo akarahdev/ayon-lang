@@ -227,9 +227,10 @@ public class FunctionTransformer {
                 var targetStructureType = ((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get());
                 var targetStructureData = ProgramTypeInformation.resolveStructure(targetStructureType.name(), access.errorSpan());
                 var targetFieldType = targetStructureData.parameters().get(access.field());
-                var targetFieldIndex = getIndexOf(targetStructureData.parameters(), access.field());
+                var targetFieldIndex = getIndexOf(targetStructureData.parameters(), access.field(), access.errorSpan());
                 var ptr = basicBlocks.peek().getElementPtr(
-                    ((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get()).llvm(expression.errorSpan()),
+                    ProgramTypeInformation.resolveStructure(((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get()).name(), access.expr().errorSpan())
+                        .llvmStruct(),
                     buildExpression(access.expr(), codeBlock, true),
                     Types.integer(32),
                     Constant.constant(0),
@@ -259,14 +260,14 @@ public class FunctionTransformer {
 
     }
 
-    public static<K, V> int getIndexOf(LinkedHashMap<K, V> map, K key) {
+    public static<K, V> int getIndexOf(LinkedHashMap<K, V> map, K key, SpanData spanData) {
         int index = 0;
         for(var key2 : map.keySet()) {
             if(key.equals(key2))
                 return index;
             index++;
         }
-        throw new RuntimeException("ruh roh key not found!! oopsie doopsie :3");
+        throw new CompileError.RawMessage("field " + key + " is not present", spanData);
     }
 }
 

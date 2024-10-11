@@ -4,6 +4,7 @@ import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.expr.*;
 import dev.akarah.lang.ast.header.Function;
 import dev.akarah.lang.ast.header.Header;
+import dev.akarah.lang.ast.stmt.ReturnValue;
 import dev.akarah.lang.ast.stmt.Statement;
 import dev.akarah.lang.error.CompileError;
 
@@ -12,7 +13,7 @@ import java.util.Stack;
 public class FunctionTypeChecker implements AST.Visitor {
     Function function;
 
-    Stack<CodeBlock> codeBlocks;
+    Stack<CodeBlock> codeBlocks = new Stack<>();
 
     public FunctionTypeChecker(Function function) {
         this.function = function;
@@ -35,7 +36,14 @@ public class FunctionTypeChecker implements AST.Visitor {
 
     @Override
     public void statement(Statement statement) {
-
+        switch (statement) {
+            case ReturnValue returnValue -> {
+                if(!returnValue.value().type().get().equals(function.returnType())) {
+                    throw new CompileError.RawMessage("return type doesn't match functions' return type", returnValue.value().errorSpan());
+                }
+            }
+            default -> {}
+        }
     }
 
     @Override
