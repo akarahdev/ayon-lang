@@ -9,13 +9,12 @@ import dev.akarah.lang.error.CompileError;
 import dev.akarah.llvm.Module;
 import dev.akarah.llvm.cfg.BasicBlock;
 import dev.akarah.llvm.cfg.Function;
-import dev.akarah.llvm.inst.Constant;
-import dev.akarah.llvm.inst.Instruction;
-import dev.akarah.llvm.inst.Type;
-import dev.akarah.llvm.inst.Value;
+import dev.akarah.llvm.inst.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -81,11 +80,12 @@ public class FunctionTransformer {
     }
 
     public void buildStatement(Statement statement, CodeBlock codeBlock) {
+        basicBlocks.peek().comment("begin statement: " + statement);
         switch (statement) {
             case VariableDeclaration variableDeclaration -> {
                 var local = (Value.LocalVariable) basicBlocks.peek().alloca(variableDeclaration.type().get().llvm());
                 codeBlock.data().llvmVariables().put(variableDeclaration.name(), local);
-                var expr = buildExpression(variableDeclaration.value(), codeBlock);
+                var expr = buildExpression(variableDeclaration.value(), codeBlock, true);
                 basicBlocks.peek().store(variableDeclaration.type().get().llvm(), expr, local);
             }
             case IfStatement ifStatement -> {
@@ -97,26 +97,36 @@ public class FunctionTransformer {
             case ReturnValue returnValue -> {
                 basicBlocks.peek().ret(
                     returnValue.value().type().get().llvm(),
-                    buildExpression(returnValue.value(), codeBlock)
+                    buildExpression(returnValue.value(), codeBlock, true)
                 );
             }
             case Expression expression -> {
-                buildExpression(expression, codeBlock);
+                buildExpression(expression, codeBlock, true);
             }
             default -> throw new IllegalStateException("Unexpected value: " + statement);
         }
+        basicBlocks.peek().comment("end statement: " + statement);
     }
 
-    public Value buildExpression(Expression expression, CodeBlock codeBlock) {
+    public Value buildExpression(Expression expression, CodeBlock codeBlock, boolean dereferenceLocals) {
         return switch (expression) {
             case IntegerLiteral integerLiteral -> Constant.constant(integerLiteral.integer());
             case FloatingLiteral floatingLiteral -> Constant.constant(floatingLiteral.floating());
             case VariableLiteral variableLiteral -> {
                 System.out.println(codeBlock.data().llvmVariables().keySet());
-                yield basicBlocks.peek().load(
-                    variableLiteral.type().get().llvm(),
-                    codeBlock.data().llvmVariables().get(variableLiteral.name())
-                );
+                if(dereferenceLocals) {
+                    yield basicBlocks.peek().load(
+                        variableLiteral.type().get().llvm(),
+                        codeBlock.data().llvmVariables().get(variableLiteral.name())
+                    );
+                } else {
+                    yield basicBlocks.peek().getElementPtr(
+                        codeBlock.data().localVariables().get(variableLiteral.name()).llvm(),
+                        codeBlock.data().llvmVariables().get(variableLiteral.name()),
+                        Types.integer(32),
+                        Constant.constant(0)
+                    );
+                }
             }
             case CStringLiteral cStringLiteral -> {
                 var global = Value.GlobalVariable.random();
@@ -139,7 +149,7 @@ public class FunctionTransformer {
                     for (var value : invoke.arguments()) {
                         arguments.add(new Instruction.Call.Parameter(
                             value.type().get().llvm(),
-                            buildExpression(value, codeBlock)
+                            buildExpression(value, codeBlock, true)
                         ));
                     }
                     yield basicBlocks.peek().call(
@@ -152,52 +162,76 @@ public class FunctionTransformer {
             }
             case Add binOp -> {
                 yield basicBlocks.peek().add(binOp.type().get().llvm(),
-                    buildExpression(binOp.lhs(), codeBlock),
-                    buildExpression(binOp.rhs(), codeBlock));
+                    buildExpression(binOp.lhs(), codeBlock, true),
+                    buildExpression(binOp.rhs(), codeBlock, true));
             }
             case Sub binOp -> {
                 yield basicBlocks.peek().sub(binOp.type().get().llvm(),
-                    buildExpression(binOp.lhs(), codeBlock),
-                    buildExpression(binOp.rhs(), codeBlock));
+                    buildExpression(binOp.lhs(), codeBlock, true),
+                    buildExpression(binOp.rhs(), codeBlock, true));
             }
             case Mul binOp -> {
                 yield basicBlocks.peek().mul(binOp.type().get().llvm(),
-                    buildExpression(binOp.lhs(), codeBlock),
-                    buildExpression(binOp.rhs(), codeBlock));
+                    buildExpression(binOp.lhs(), codeBlock, true),
+                    buildExpression(binOp.rhs(), codeBlock, true));
             }
             case Div binOp -> {
                 yield basicBlocks.peek().sdiv(binOp.type().get().llvm(),
-                    buildExpression(binOp.lhs(), codeBlock),
-                    buildExpression(binOp.rhs(), codeBlock));
+                    buildExpression(binOp.lhs(), codeBlock, true),
+                    buildExpression(binOp.rhs(), codeBlock, true));
             }
             case BitCast bitCast -> {
-                throw new RuntimeException("TODO");
+                yield basicBlocks.peek().bitcast(
+                    bitCast.expr().type().get().llvm(),
+                    buildExpression(bitCast.expr(), codeBlock, true),
+                    bitCast.type().get().llvm()
+                );
             }
             case InitStructure initStructure -> {
-//                yield basicBlocks.peek().call(
-//                    new Type.Ptr(Types.VOID),
-//                    new Value.GlobalVariable("malloc"),
-//                    List.of(new Instruction.Call.Parameter(new Type.Integer(32), Constant.constant(initStructure.type().get().size()+4)))
-//                );
-//                yield basicBlocks.peek().alloca(initStructure.type().get().llvm());
-                yield null;
+                yield new Value.ZeroInitializer();
             }
             case FieldAccess access -> {
+                var targetStructureType = ((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get());
+                var targetStructureData = ProgramTypeInformation.resolveStructure(targetStructureType.name());
+                var targetFieldType = targetStructureData.parameters().get(access.field());
+                var targetFieldIndex = getIndexOf(targetStructureData.parameters(), access.field());
+                var elementPtr = basicBlocks.peek().getElementPtr(
+                    access.expr().type().value.llvm(),
+                    buildExpression(access.expr(), codeBlock, false),
+                    Types.integer(32),
+                    Constant.constant(targetFieldIndex)
+                );
+                if(dereferenceLocals) {
+                    yield basicBlocks.peek().load(
+                       targetFieldType.llvm(),
+                        elementPtr
+                    );
+                } else {
+                    yield elementPtr;
+                }
+            }
+            case Store store -> {
+                var ref = buildExpression(store.lhs(), codeBlock, false);
+                basicBlocks.peek().store(
+                    store.lhs().type().get().llvm(),
+                    buildExpression(store.rhs(), codeBlock, true),
+                    ref
+                );
                 yield null;
             }
-            case Store store -> switch (store.lhs()) {
-//                case VariableLiteral variableLiteral -> {
-//                    basicBlocks.peek().store(
-//                        variableLiteral.type().get().llvm(),
-//                        buildExpression(store.rhs(), codeBlock),
-//                        codeBlock.data().llvmVariables().get(variableLiteral.name())
-//                    );
-//                    yield null;
-//                }
-                default -> null;
-            };
             default -> throw new IllegalStateException("Unexpected value: " + expression);
         };
+
+    }
+
+    public static<K, V> int getIndexOf(LinkedHashMap<K, V> map, K key) {
+        int index = 0;
+        for(var key2 : map.keySet()) {
+            if(key.equals(key2))
+                return index;
+            index++;
+        }
+        throw new RuntimeException("ruh roh key not found!! oopsie doopsie :3");
     }
 }
 

@@ -77,6 +77,7 @@ public class Main {
                     System.out.println(structureDeclaration);
                 }
                 case Function function -> {
+                    System.out.println(function);
                     var ftd = new FunctionTypeAnnotator();
                     ftd.header(function);
 
