@@ -5,6 +5,7 @@ import dev.akarah.util.Mutable;
 import dev.akarah.lang.ast.Type;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public record ArrayLiteral(List<Expression> values, Mutable<Type> type, SpanData errorSpan) implements Expression {
     @Override
@@ -12,5 +13,10 @@ public record ArrayLiteral(List<Expression> values, Mutable<Type> type, SpanData
         for (var value : values)
             value.accept(visitor);
         visitor.expression(this);
+    }
+
+    @Override
+    public String toString() {
+        return values.stream().map(Object::toString).collect(Collectors.joining(", \n"));
     }
 }

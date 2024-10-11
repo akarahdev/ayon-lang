@@ -9,4 +9,9 @@ public record VariableLiteral(String name, Mutable<Type> type, SpanData errorSpa
     public void accept(Visitor visitor) {
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return "(" + name + " as " + type + ")";
+    }
 }

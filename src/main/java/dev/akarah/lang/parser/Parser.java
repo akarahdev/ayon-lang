@@ -119,7 +119,9 @@ public class Parser {
             name,
             parameters,
             attributes,
-            span
+            span,
+            new Mutable<>(),
+            new Mutable<>()
         );
 
     }
@@ -331,12 +333,14 @@ public class Parser {
             if (tokenReader.peek() instanceof Token.Equals) {
                 var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Equals);
-                var rhs = parseTerm();
+                var rhs = parseFactor();
                 expr = new Store(expr, rhs, new Mutable<>(), span);
             } else break;
         }
         return expr;
     }
+
+
 
 
     public Expression parseFactor() {
@@ -358,7 +362,7 @@ public class Parser {
     }
 
     public Expression parseTerm() {
-        var expr = parseNegation();
+        var expr = parseUfcs();
         while (true) {
             if (tokenReader.peek() instanceof Token.Plus) {
                 var span = tokenReader.generateSpan();
@@ -370,18 +374,6 @@ public class Parser {
                 tokenReader.match(it -> it instanceof Token.Minus);
                 var rhs = parseTerm();
                 expr = new Sub(expr, rhs, new Mutable<>(), span);
-            } else break;
-        }
-        return expr;
-    }
-
-    public Expression parseNegation() {
-        var expr = parseUfcs();
-        while (true) {
-            if (tokenReader.peek() instanceof Token.Minus) {
-                var span = tokenReader.generateSpan();
-                tokenReader.match(it -> it instanceof Token.Minus);
-                expr = new Negate(expr, new Mutable<>(), span);
             } else break;
         }
         return expr;
@@ -408,14 +400,9 @@ public class Parser {
     }
 
     public Expression parsePostfixExpression() {
-        var expr = parseBaseExpression();
+        var expr = parseAccess();
         while (true) {
-            if (tokenReader.peek() instanceof Token.Arrow arrow) {
-                var span = tokenReader.generateSpan();
-                tokenReader.match(it -> it instanceof Token.Arrow);
-                var field = parseIdentifier();
-                expr = new FieldAccess(expr, field, new Mutable<>(), span);
-            } else if (tokenReader.peek() instanceof Token.OpenBracket op) {
+            if (tokenReader.peek() instanceof Token.OpenBracket op) {
                 var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.OpenBracket);
                 var index = parseExpression();
@@ -445,6 +432,18 @@ public class Parser {
         return expr;
     }
 
+    public Expression parseAccess() {
+        var expr = parseBaseExpression();
+        while(true) {
+            if (tokenReader.peek() instanceof Token.Arrow arrow) {
+                var span = tokenReader.generateSpan();
+                tokenReader.match(it -> it instanceof Token.Arrow);
+                var field = parseIdentifier();
+                expr = new FieldAccess(expr, field, new Mutable<>(), span);
+            } else break;
+        }
+        return expr;
+    }
 
     public Expression parseBaseExpression() {
         skipWhitespace();
@@ -456,9 +455,14 @@ public class Parser {
             case Token.Keyword kw -> switch (kw.keyword()) {
                 case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)), span);
                 case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)), span);
+                case "c" -> {
+                    var string = (Token.StringLiteral) tokenReader.match(it -> it instanceof Token.StringLiteral);
+                    yield new CStringLiteral(string.literal(), string.span());
+                }
                 case "init" -> {
                     yield new InitStructure(new Mutable<>(parseType()), span);
                 }
+                case "nullptr" -> new NullLiteral(new Mutable<>(new Type.UserStructure("std::any")), span);
                 default -> throw new CompileError.RawMessage("this keyword is not a valid expression", span);
             };
             case Token.IdentifierLiteral vr -> {
@@ -472,7 +476,7 @@ public class Parser {
                 yield inner;
             }
             case Token.StringLiteral sl -> {
-                yield new CStringLiteral(sl.literal(), span);
+                yield new StdStringLiteral(sl.literal(), span);
             }
             default -> throw new CompileError.RawMessage("not an expression", span);
         };

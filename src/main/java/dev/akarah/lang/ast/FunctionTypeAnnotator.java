@@ -12,14 +12,16 @@ import java.util.Stack;
 
 public class FunctionTypeAnnotator implements AST.Visitor {
     Stack<CodeBlock> codeBlocks = new Stack<>();
+    Function function;
 
     @Override
     public void header(Header header) {
         switch (header) {
-            case Function function -> {
-                for (var param : function.parameters().keySet()) {
-                    function.codeBlock().data().localVariables()
-                        .put(param, function.parameters().get(param));
+            case Function function2 -> {
+                this.function = function2;
+                for (var param : function2.parameters().keySet()) {
+                    function2.codeBlock().data().localVariables()
+                        .put(param, function2.parameters().get(param));
                 }
             }
             default -> {
@@ -36,6 +38,11 @@ public class FunctionTypeAnnotator implements AST.Visitor {
                     codeBlocks.peek().data().localVariables().get(localName)
                 );
             }
+        } else {
+            for (var param : function.parameters().keySet()) {
+                codeBlock.data().localVariables()
+                    .put(param, function.parameters().get(param));
+            }
         }
         codeBlocks.add(codeBlock);
     }
@@ -47,6 +54,7 @@ public class FunctionTypeAnnotator implements AST.Visitor {
 
     @Override
     public void statement(Statement statement) {
+        System.out.println(codeBlocks.peek().data().localVariables());
         switch (statement) {
             case VariableDeclaration variableDeclaration -> {
                 if (variableDeclaration.type().value != null) {
@@ -60,13 +68,16 @@ public class FunctionTypeAnnotator implements AST.Visitor {
                     codeBlocks.peek().data().localVariables()
                         .get(variableDeclaration.name());
             }
+            case Expression expression -> this.expression(expression);
             default -> {
+                System.out.println("Nooping on " + statement);
             }
         }
     }
 
     @Override
     public void expression(Expression expression) {
+        System.out.println("Expr: " + expression);
         switch (expression) {
             case IntegerLiteral il -> {
                 if (il.type().value == null) {
@@ -90,6 +101,8 @@ public class FunctionTypeAnnotator implements AST.Visitor {
                 }
             }
             case Invoke invoke -> {
+                for(var arg : invoke.arguments())
+                    this.expression(arg);
                 switch (invoke.base()) {
                     case VariableLiteral variableLiteral -> {
                         invoke.type().value = ProgramTypeInformation.resolveFunction(variableLiteral.name(), variableLiteral.errorSpan()).returnType();
@@ -103,27 +116,31 @@ public class FunctionTypeAnnotator implements AST.Visitor {
             case Subscript subscript -> {
             }
             case VariableLiteral variableLiteral -> {
+                System.out.println("locals: " + codeBlocks.peek().data().localVariables());
                 if(codeBlocks.peek().data().localVariables().containsKey(variableLiteral.name())) {
                     variableLiteral.type().value =
                         codeBlocks.peek().data().localVariables()
                             .get(variableLiteral.name());
                 } else if(ProgramTypeInformation.headers.containsKey(variableLiteral.name())) {
-
+                    variableLiteral.type().set(new Type.Unit());
                 } else {
                     throw new CompileError.RawMessage("unable to resolve type of `" + variableLiteral.name() + "`", variableLiteral.errorSpan());
                 }
 
             }
             case CStringLiteral stringLiteral -> {}
+            case StdStringLiteral stdStringLiteral -> {}
             case BitCast bitCast -> {}
             case InitStructure initStructure -> {
                 initStructure.type().set(initStructure.type().get());
             }
             case FieldAccess fieldAccess -> {
-                this.expression(fieldAccess.expr());
+                fieldAccess.expr().accept(this);
                 var structure = (Type.UserStructure) fieldAccess.expr().type().get();
-                var resolved = ProgramTypeInformation.resolveStructure(structure.name(), fieldAccess.errorSpan());
+                var resolved = ProgramTypeInformation.resolveStructure(structure.name(), fieldAccess.expr().errorSpan());
                 var outputType = resolved.parameters().get(fieldAccess.field());
+                System.out.println("OUTPUT TYPE: " + outputType);
+                System.out.println("EXPR TYPE: " + fieldAccess.expr().type());
                 fieldAccess.type().set(outputType);
             }
             case Store store -> {

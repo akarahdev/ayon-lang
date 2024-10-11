@@ -15,7 +15,7 @@ public record FunctionDeclaration(
     List<Attribute> attributes,
     SpanData errorSpan
 ) implements Header {
-    public void visit(AST.Visitor visitor) {
+    public void accept(AST.Visitor visitor) {
         visitor.header(this);
     }
 }

@@ -11,4 +11,9 @@ public record Store(Expression lhs, Expression rhs, Mutable<Type> type, SpanData
         rhs.accept(visitor);
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return lhs + " = " + rhs;
+    }
 }

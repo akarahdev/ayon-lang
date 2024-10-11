@@ -13,4 +13,9 @@ public record ReturnValue(
         value.accept(visitor);
         visitor.statement(this);
     }
+
+    @Override
+    public String toString() {
+        return "return " + value;
+    }
 }

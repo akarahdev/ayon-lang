@@ -14,6 +14,8 @@ public class Lexer {
         return """
             ; Skipped line for other keywords
             fn
+            nullptr
+            c
             void
             init
             declare

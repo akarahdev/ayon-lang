@@ -32,7 +32,7 @@ public class FunctionTransformer {
                 .filter(it -> it.name().equals("mangle_as"))
                 .findFirst()
                 .ifPresent(attribute -> {
-                    output.set(((CStringLiteral) attribute.arguments().getFirst()).contents());
+                    output.set(((StdStringLiteral) attribute.arguments().getFirst()).contents());
                 });
             return output.get();
         }
@@ -155,6 +155,25 @@ public class FunctionTransformer {
                     }
                 );
                 yield global;
+            }
+            case StdStringLiteral stdStringLiteral -> {
+                var global = Value.GlobalVariable.random();
+                module.newGlobal(
+                    global,
+                    globalVariable -> {
+                        globalVariable.withType(new Type.Array(
+                            stdStringLiteral.contents().getBytes(StandardCharsets.UTF_8).length + 1,
+                            new Type.Integer(8)
+                        ));
+                        globalVariable.withValue(new Value.CStringConstant(stdStringLiteral.contents() + "\\\\00"));
+                    }
+                );
+
+                yield basicBlocks.peek().call(
+                    Types.pointer(),
+                    new Value.GlobalVariable("std.string.of"),
+                    List.of(new Call.Parameter(Types.pointer(), global))
+                );
             }
             case Invoke invoke -> {
                 if (invoke.base() instanceof VariableLiteral variableLiteral) {

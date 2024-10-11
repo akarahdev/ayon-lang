@@ -17,4 +17,9 @@ public record VariableDeclaration(
         value.accept(visitor);
         visitor.statement(this);
     }
+
+    @Override
+    public String toString() {
+        return "var " + name + ": " + type + " = " + value;
+    }
 }

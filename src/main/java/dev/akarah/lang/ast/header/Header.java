@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface Header extends AST {
     List<Attribute> attributes();
-    void visit(Visitor visitor);
+    void accept(Visitor visitor);
 }

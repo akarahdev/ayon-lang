@@ -1,17 +1,25 @@
 package dev.akarah.lang.ast.expr;
 
 import dev.akarah.lang.SpanData;
+import dev.akarah.lang.ast.stmt.Statement;
 import dev.akarah.util.Mutable;
 import dev.akarah.lang.ast.Type;
 
 import java.util.List;
 
-public record Invoke(Expression base, List<Expression> arguments, Mutable<Type> type, SpanData errorSpan) implements Expression {
+public record Invoke(Expression base, List<Expression> arguments, Mutable<Type> type, SpanData errorSpan) implements Expression, Statement {
     @Override
     public void accept(Visitor visitor) {
         visitor.expression(base);
-        for (var arg : arguments)
-            visitor.expression(arg);
-        visitor.expression(this);
+        arguments.forEach(visitor::expression);
+        visitor.expression(arguments.getLast());
+        visitor.expression(arguments.getFirst());
+        visitor.statement(this);
+        System.out.println("POST PROC: " + this);
+    }
+
+    @Override
+    public String toString() {
+        return base + "(" + arguments.toString().substring(1, arguments.toString().length()-1) + ")";
     }
 }

@@ -5,6 +5,7 @@ import dev.akarah.lang.ast.Program;
 import dev.akarah.lang.ast.header.Function;
 import dev.akarah.lang.ast.header.FunctionDeclaration;
 import dev.akarah.lang.ast.header.StructureDeclaration;
+import dev.akarah.lang.ast.stmt.Statement;
 import dev.akarah.lang.error.CompileError;
 import dev.akarah.lang.lexer.Lexer;
 import dev.akarah.lang.lexer.StringReader;
@@ -23,6 +24,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class Main {
     static final HashMap<String, String> files = new HashMap<>();
@@ -72,11 +74,21 @@ public class Main {
                     case Function function -> {
                         var ftd = new FunctionTypeAnnotator();
                         ftd.header(function);
-                        function.visit(ftd);
+                        function.accept(ftd);
 
-                        var ftc = new FunctionTypeChecker(function);
-                        ftc.header(function);
-                        function.visit(ftc);
+                        System.out.println(function.name());
+                        System.out.println("-----");
+                        System.out.println(
+                            function.codeBlock()
+                                .statements()
+                                .stream()
+                                .map(Statement::toString)
+                                .collect(Collectors.joining("\n"))
+                        );
+                        System.out.println("-----");
+
+                        var ftc = new FunctionTypeChecker();
+                        function.accept(ftc);
                     }
                     case FunctionDeclaration functionDeclaration -> {
 
@@ -130,8 +142,9 @@ public class Main {
         var line = files.get(file.getFileName().toString()).split("\n")[e.span().line()-1];
         System.out.println("| " + line);
         System.out.println("| " + " ".repeat(e.span().column()-1) + "^");
-        // e.printStackTrace();
+        e.printStackTrace();
         System.exit(1);
+
     }
 
 }

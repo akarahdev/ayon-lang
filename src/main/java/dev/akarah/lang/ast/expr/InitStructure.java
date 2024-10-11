@@ -9,4 +9,9 @@ public record InitStructure(Mutable<Type> type, SpanData errorSpan) implements E
     public void accept(Visitor visitor) {
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return "(init " + this.type + ")";
+    }
 }

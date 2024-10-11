@@ -11,4 +11,9 @@ public record Mul(Expression lhs, Expression rhs, Mutable<Type> type, SpanData e
         rhs.accept(visitor);
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return "(" + lhs.toString() + " * " + rhs.toString() + ") as " + type;
+    }
 }

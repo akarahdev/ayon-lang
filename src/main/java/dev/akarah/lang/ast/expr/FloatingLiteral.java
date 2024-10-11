@@ -9,4 +9,9 @@ public record FloatingLiteral(double floating, Mutable<Type> type, SpanData erro
     public void accept(Visitor visitor) {
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(floating);
+    }
 }

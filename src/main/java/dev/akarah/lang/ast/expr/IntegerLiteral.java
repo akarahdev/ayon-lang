@@ -9,4 +9,9 @@ public record IntegerLiteral(long integer, Mutable<Type> type, SpanData errorSpa
     public void accept(Visitor visitor) {
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(integer);
+    }
 }

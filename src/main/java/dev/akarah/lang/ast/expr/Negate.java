@@ -10,4 +10,9 @@ public record Negate(Expression value, Mutable<Type> type, SpanData errorSpan) i
         visitor.expression(value);
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return "-" + value;
+    }
 }

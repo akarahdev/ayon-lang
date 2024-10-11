@@ -10,4 +10,9 @@ public record FieldAccess(Expression expr, String field, Mutable<Type> type, Spa
         expr.accept(visitor);
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return "(" + expr + "->" + field + " as " + type + ")";
+    }
 }

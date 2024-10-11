@@ -11,4 +11,9 @@ public record Subscript(Expression expression, Expression subscriptWith, Mutable
         visitor.expression(subscriptWith);
         visitor.expression(this);
     }
+
+    @Override
+    public String toString() {
+        return expression + "[" + subscriptWith + "]";
+    }
 }

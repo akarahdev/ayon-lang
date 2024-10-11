@@ -14,6 +14,11 @@ public sealed interface Type {
         public long size(SpanData span) {
             return width / 8;
         }
+
+        @Override
+        public String toString() {
+            return "i" + width;
+        }
     }
 
     record UnsignedInteger(int width) implements Type {
@@ -25,6 +30,11 @@ public sealed interface Type {
         @Override
         public long size(SpanData span) {
             return width / 8;
+        }
+
+        @Override
+        public String toString() {
+            return "u" + width;
         }
     }
 
@@ -38,6 +48,11 @@ public sealed interface Type {
         public long size(SpanData span) {
             return 4;
         }
+
+        @Override
+        public String toString() {
+            return "f32";
+        }
     }
 
     record F64() implements Type {
@@ -49,6 +64,11 @@ public sealed interface Type {
         @Override
         public long size(SpanData span) {
             return 8;
+        }
+
+        @Override
+        public String toString() {
+            return "f64";
         }
     }
 
@@ -62,6 +82,11 @@ public sealed interface Type {
         public long size(SpanData span) {
             return 16;
         }
+
+        @Override
+        public String toString() {
+            return "f128";
+        }
     }
 
     record Unit() implements Type {
@@ -73,6 +98,11 @@ public sealed interface Type {
         @Override
         public long size(SpanData span) {
             return 0;
+        }
+
+        @Override
+        public String toString() {
+            return "unit";
         }
     }
 
@@ -86,6 +116,11 @@ public sealed interface Type {
         public long size(SpanData span) {
             return length * type.size(span);
         }
+
+        @Override
+        public String toString() {
+            return type + "[" + length + "]";
+        }
     }
 
     record CStringPointer(Type type) implements Type  {
@@ -97,6 +132,11 @@ public sealed interface Type {
         @Override
         public long size(SpanData span) {
             return 4;
+        }
+
+        @Override
+        public String toString() {
+            return "&str";
         }
     }
 
@@ -111,8 +151,16 @@ public sealed interface Type {
             return ProgramTypeInformation
                 .resolveStructure(name, span)
                 .parameters().values().stream()
-                .mapToInt(it -> Math.toIntExact(it.size(span)))
+                .mapToInt(it -> switch (it) {
+                    case UserStructure ignored -> 8;
+                    default -> Math.toIntExact(it.size(span));
+                })
                 .sum() + 2;
+        }
+
+        @Override
+        public String toString() {
+            return this.name;
         }
     }
 
