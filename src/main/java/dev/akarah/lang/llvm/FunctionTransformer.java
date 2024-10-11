@@ -10,6 +10,7 @@ import dev.akarah.llvm.Module;
 import dev.akarah.llvm.cfg.BasicBlock;
 import dev.akarah.llvm.cfg.Function;
 import dev.akarah.llvm.inst.*;
+import dev.akarah.llvm.inst.misc.Call;
 import dev.akarah.util.ReferenceCountingLibrary;
 
 import java.nio.charset.StandardCharsets;
@@ -107,7 +108,7 @@ public class FunctionTransformer {
                         basicBlocks.peek().call(
                             Types.integer(16),
                             ReferenceCountingLibrary.DECREMENT_REFERENCE_COUNT,
-                            List.of(new Instruction.Call.Parameter(
+                            List.of(new Call.Parameter(
                                 Types.pointerTo(Types.VOID),
                                 codeBlock.data().llvmVariables().get(variableName)
                             ))
@@ -158,14 +159,14 @@ public class FunctionTransformer {
             }
             case Invoke invoke -> {
                 if (invoke.base() instanceof VariableLiteral variableLiteral) {
-                    var arguments = new ArrayList<Instruction.Call.Parameter>();
+                    var arguments = new ArrayList<Call.Parameter>();
 
                     for (var value : invoke.arguments()) {
                         System.out.println(value);
                         Value newArg = null;
                         System.out.println(value.type().get());
                         newArg = buildExpression(value, codeBlock, true);
-                        arguments.add(new Instruction.Call.Parameter(
+                        arguments.add(new Call.Parameter(
                             value.type().get().llvm(),
                             newArg
                         ));
@@ -210,7 +211,7 @@ public class FunctionTransformer {
                     Types.pointerTo(Types.VOID),
                     new Value.GlobalVariable("malloc"),
                     List.of(
-                        new Instruction.Call.Parameter(
+                        new Call.Parameter(
                             Types.integer(32), Constant.constant(initStructure.type().get().size())))
                 );
                 basicBlocks.peek().store(
@@ -221,7 +222,7 @@ public class FunctionTransformer {
                 basicBlocks.peek().call(
                     Types.integer(16),
                     ReferenceCountingLibrary.INCREMENT_REFERENCE_COUNT,
-                    List.of(new Instruction.Call.Parameter(Types.pointerTo(Types.VOID), ptr))
+                    List.of(new Call.Parameter(Types.pointerTo(Types.VOID), ptr))
                 );
                 yield ptr;
             }
@@ -231,7 +232,7 @@ public class FunctionTransformer {
                 var targetFieldType = targetStructureData.parameters().get(access.field());
                 var targetFieldIndex = getIndexOf(targetStructureData.parameters(), access.field());
                 var ptr = basicBlocks.peek().getElementPtr(
-                    ((Type.Ptr) access.expr().type().get().llvm()).subtype(),
+                    ((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get()).llvm(),
                     buildExpression(access.expr(), codeBlock, true),
                     Types.integer(32),
                     Constant.constant(0),

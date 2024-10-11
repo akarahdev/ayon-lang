@@ -23,6 +23,6 @@ public record StructureDeclaration(
         for(var value : parameters.values()) {
             types[index++] = value.llvm();
         }
-        return new dev.akarah.llvm.inst.Type.Ptr(new dev.akarah.llvm.inst.Type.Structure(types));
+        return new dev.akarah.llvm.inst.Type.Ptr();
     }
 }
