@@ -99,26 +99,14 @@ public sealed interface Type {
         }
     }
 
-    record Union(Type lhs, Type rhs) implements Type {
-        @Override
-        public dev.akarah.llvm.inst.Type llvm() {
-            throw new UnsupportedOperationException("WIP");
-        }
-
-        @Override
-        public long size() {
-            return Math.max(lhs.size(), rhs.size());
-        }
-    }
-
     record UserStructure(String name) implements Type {
         @Override
         public dev.akarah.llvm.inst.Type llvm() {
-            throw new UnsupportedOperationException("WIP");
+            return ProgramTypeInformation.resolveStructure(name).llvm();
         }
 
         @Override
-        public long size() { throw new UnsupportedOperationException("WIP"); }
+        public long size() { return ProgramTypeInformation.resolveStructure(name).parameters().values().stream().mapToInt(it -> Math.toIntExact(it.size())).sum(); }
     }
 
     dev.akarah.llvm.inst.Type llvm();

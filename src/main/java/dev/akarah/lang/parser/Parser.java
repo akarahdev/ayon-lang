@@ -10,14 +10,12 @@ import dev.akarah.lang.ast.stmt.IfStatement;
 import dev.akarah.lang.ast.stmt.ReturnValue;
 import dev.akarah.lang.ast.stmt.Statement;
 import dev.akarah.lang.ast.stmt.VariableDeclaration;
+import dev.akarah.lang.error.CompileError;
 import dev.akarah.lang.lexer.Token;
 import dev.akarah.util.Mutable;
 import dev.akarah.util.Reader;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.TreeMap;
+import java.util.*;
 
 public class Parser {
     Reader<Token> tokenReader;
@@ -99,7 +97,7 @@ public class Parser {
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("record"));
         var name = parseIdentifier();
 
-        var parameters = new TreeMap<String, Type>();
+        var parameters = new LinkedHashMap<String, Type>();
         tokenReader.match(it -> it instanceof Token.OpenBrace);
         skipWhitespace();
 
@@ -131,7 +129,7 @@ public class Parser {
         var ident = parseIdentifier();
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.OpenParen);
-        var params = new TreeMap<String, Type>();
+        var params = new LinkedHashMap<String, Type>();
         loop:
         while (true) {
             skipWhitespace();
@@ -144,7 +142,8 @@ public class Parser {
             tokenReader.match(it -> it instanceof Token.Colon);
             var ty = parseType();
 
-            var ot = tokenReader.match(it -> it instanceof Token.Comma || it instanceof Token.CloseParen);
+            var ot = tokenReader.match(it -> it instanceof Token.Comma || it instanceof Token.CloseParen,
+                it -> { throw new CompileError.UnexpectedTokens(it, Token.Comma.class, Token.CloseParen.class); });
 
             params.put(id.literal(), ty);
 
@@ -159,7 +158,8 @@ public class Parser {
             }
         }
         skipWhitespace();
-        tokenReader.match(it -> it instanceof Token.Arrow);
+        tokenReader.match(it -> it instanceof Token.Arrow,
+            it -> { throw new CompileError.UnexpectedTokens(it, Token.Arrow.class); });
         skipWhitespace();
         var returnType = parseType();
         skipWhitespace();
@@ -178,9 +178,10 @@ public class Parser {
         skipWhitespace();
         var ident = parseIdentifier();
         skipWhitespace();
-        tokenReader.match(it -> it instanceof Token.OpenParen);
+        tokenReader.match(it -> it instanceof Token.OpenParen,
+            it -> { throw new CompileError.UnexpectedTokens(it, Token.OpenParen.class); });
 
-        var params = new TreeMap<String, Type>();
+        var params = new LinkedHashMap<String, Type>();
         loop:
         while (true) {
             skipWhitespace();
@@ -189,11 +190,13 @@ public class Parser {
                 break;
             }
 
-            var id = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
+            var id = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral,
+                it -> { throw new CompileError.UnexpectedTokens(it, Token.IdentifierLiteral.class); });
             tokenReader.match(it -> it instanceof Token.Colon);
             var ty = parseType();
 
-            var ot = tokenReader.match(it -> it instanceof Token.Comma || it instanceof Token.CloseParen);
+            var ot = tokenReader.match(it -> it instanceof Token.Comma || it instanceof Token.CloseParen,
+                it -> { throw new CompileError.UnexpectedTokens(it, Token.Comma.class, Token.CloseParen.class); });
 
             params.put(id.literal(), ty);
 
@@ -225,7 +228,7 @@ public class Parser {
             tokenReader.match(it -> it instanceof Token.Equals);
             return new Function(
                 ident,
-                new TreeMap<>(),
+                new LinkedHashMap<>(),
                 returnType,
                 new CodeBlock(
                     List.of(new ReturnValue(parseExpression())),
@@ -240,15 +243,18 @@ public class Parser {
         var stmt = new ArrayList<Statement>();
 
         skipWhitespace();
-        tokenReader.match(it -> it instanceof Token.OpenBrace);
+        tokenReader.match(it -> it instanceof Token.OpenBrace,
+            it -> { throw new CompileError.UnexpectedTokens(it, Token.OpenBrace.class); });
         skipWhitespace();
         while (!(tokenReader.peek() instanceof Token.CloseBrace)) {
             stmt.add(parseStatement());
-            tokenReader.match(it -> it instanceof Token.NewLine);
+            tokenReader.match(it -> it instanceof Token.NewLine,
+                it -> { throw new CompileError.UnexpectedTokens(it, Token.NewLine.class); });
             skipWhitespace();
         }
         skipWhitespace();
-        tokenReader.match(it -> it instanceof Token.CloseBrace);
+        tokenReader.match(it -> it instanceof Token.CloseBrace,
+            it -> { throw new CompileError.UnexpectedTokens(it, Token.CloseBrace.class); });
 
         return new CodeBlock(stmt, new CodeBlockData(new HashMap<>(), new HashMap<>()));
     }
@@ -301,8 +307,21 @@ public class Parser {
     }
 
     public Expression parseExpression() {
-        return parseFactor();
+        return parseStorage();
     }
+
+    public Expression parseStorage() {
+        var expr = parseFactor();
+        while (true) {
+            if (tokenReader.peek() instanceof Token.Equals) {
+                tokenReader.match(it -> it instanceof Token.Equals);
+                var rhs = parseTerm();
+                expr = new Store(expr, rhs, new Mutable<>());
+            } else break;
+        }
+        return expr;
+    }
+
 
     public Expression parseFactor() {
         var expr = parseTerm();
@@ -359,20 +378,24 @@ public class Parser {
                 } else {
                     throw new RuntimeException(lhs + " must be an invocation trust me bro");
                 }
-
             } else if (tokenReader.peek() instanceof Token.Arrow arrow) {
 
             } else {
                 break;
             }
         }
+        System.out.println(expr);
         return expr;
     }
 
     public Expression parsePostfixExpression() {
         var expr = parseBaseExpression();
         while (true) {
-            if (tokenReader.peek() instanceof Token.OpenBracket op) {
+            if (tokenReader.peek() instanceof Token.Arrow arrow) {
+                tokenReader.match(it -> it instanceof Token.Arrow);
+                var field = parseIdentifier();
+                expr = new FieldAccess(expr, field, new Mutable<>());
+            } else if (tokenReader.peek() instanceof Token.OpenBracket op) {
                 tokenReader.match(it -> it instanceof Token.OpenBracket);
                 var index = parseExpression();
                 tokenReader.match(it -> it instanceof Token.CloseBracket);
@@ -390,6 +413,10 @@ public class Parser {
                 }
                 tokenReader.match(it -> it instanceof Token.CloseParen);
                 expr = new Invoke(expr, exprs, new Mutable<>());
+            } else if (tokenReader.peek() instanceof Token.Keyword kw && kw.keyword().equals("as")) {
+                tokenReader.match(it -> it instanceof Token.Keyword);
+                var ty = parseType();
+                expr = new BitCast(expr, new Mutable<>(ty));
             } else break;
         }
         return expr;
@@ -405,6 +432,9 @@ public class Parser {
             case Token.Keyword kw -> switch (kw.keyword()) {
                 case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
                 case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
+                case "init" -> {
+                    yield new InitStructure(new Mutable<>(parseType()));
+                }
                 default -> throw new RuntimeException("uuhhh");
             };
             case Token.IdentifierLiteral vr -> {
@@ -465,16 +495,21 @@ public class Parser {
                 case "f64" -> new Type.F64();
                 case "f128" -> new Type.F128();
                 case "bool" -> new Type.Integer(1);
+                case "void" -> new Type.Unit();
                 default -> throw new IllegalStateException("Unexpected value: " + kw.keyword());
             };
             case Token.IdentifierLiteral identifierLiteral -> {
                 tokenReader.backtrack();
                 var literal = parseIdentifier();
-                if (literal.startsWith("i")) {
-                    yield new Type.Integer(Integer.parseInt(identifierLiteral.literal().replaceFirst("i", "")));
-                } else if (literal.startsWith("u")) {
-                    yield new Type.UnsignedInteger(Integer.parseInt(identifierLiteral.literal().replaceFirst("u", "")));
-                } else {
+                try {
+                    if (literal.startsWith("i")) {
+                        yield new Type.Integer(Integer.parseInt(identifierLiteral.literal().replaceFirst("i", "")));
+                    } else if (literal.startsWith("u")) {
+                        yield new Type.UnsignedInteger(Integer.parseInt(identifierLiteral.literal().replaceFirst("u", "")));
+                    } else {
+                        yield new Type.UserStructure(literal);
+                    }
+                } catch (NumberFormatException exception) {
                     yield new Type.UserStructure(literal);
                 }
             }

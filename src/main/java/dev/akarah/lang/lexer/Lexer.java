@@ -1,5 +1,6 @@
 package dev.akarah.lang.lexer;
 
+import dev.akarah.lang.error.CompileError;
 import dev.akarah.util.Reader;
 
 import java.util.ArrayList;
@@ -13,20 +14,19 @@ public class Lexer {
         return """
             ; Skipped line for other keywords
             fn
+            void
+            init
             declare
             if
-            then
             else
             while
             for
             var
-            let
             return
             sizeof
             enum
             record
             switch
-            match
             default
             true
             false
@@ -35,21 +35,8 @@ public class Lexer {
             f64
             f128
             usize
-            unit
             as
-            break
-            goto
-            continue
-            static
             interface
-            async
-            await
-            abstract
-            yield
-            override
-            final
-            macro
-            dyn
             """.contains("\n" + keyword + "\n");
     }
 
@@ -127,7 +114,7 @@ public class Lexer {
                     case ' ', '\r' -> {}
                     default -> {
                         stringReader.backtrack();
-                        throw new RuntimeException("unknown char at " + stringReader.generateSpan() + " `" + stringReader.peek() + "`");
+                        throw new CompileError.UnexpectedCharacter(String.valueOf(stringReader.peek()), stringReader.generateSpan());
                     }
                 }
             }

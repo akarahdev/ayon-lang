@@ -3,6 +3,7 @@ package dev.akarah.lang.lexer;
 import dev.akarah.util.Reader;
 import dev.akarah.lang.SpanData;
 
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class StringReader implements Reader<Character> {
@@ -42,10 +43,10 @@ public class StringReader implements Reader<Character> {
     }
 
     @Override
-    public Character match(Predicate<Character> predicate) {
+    public Character match(Predicate<Character> predicate, Consumer<Character> runOnFailure) {
         var r = read();
         if (!predicate.test(r)) {
-            throw new RuntimeException("Predicate " + predicate + " failed with " + r);
+            runOnFailure.accept(r);
         }
         return r;
     }

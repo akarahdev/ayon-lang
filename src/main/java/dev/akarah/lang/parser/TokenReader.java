@@ -5,6 +5,7 @@ import dev.akarah.lang.SpanData;
 import dev.akarah.lang.lexer.Token;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class TokenReader implements Reader<Token> {
@@ -34,10 +35,10 @@ public class TokenReader implements Reader<Token> {
     }
 
     @Override
-    public Token match(Predicate<Token> predicate) {
+    public Token match(Predicate<Token> predicate, Consumer<Token> runOnFailure) {
         var r = read();
-        if(!predicate.test(r)) {
-            throw new RuntimeException("Predicate " + predicate + " failed for " + r);
+        if (!predicate.test(r)) {
+            runOnFailure.accept(r);
         }
         return r;
     }

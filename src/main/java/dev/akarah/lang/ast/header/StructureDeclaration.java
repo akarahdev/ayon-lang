@@ -2,15 +2,26 @@ package dev.akarah.lang.ast.header;
 
 import dev.akarah.lang.ast.Type;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.TreeMap;
 
 public record StructureDeclaration(
     String name,
-    TreeMap<String, Type> parameters,
+    LinkedHashMap<String, Type> parameters,
     List<Attribute> attributes
 ) implements Header {
     public void visit(Visitor visitor) {
         visitor.header(this);
+    }
+
+    public dev.akarah.llvm.inst.Type llvm() {
+        var types = new dev.akarah.llvm.inst.Type[this.parameters().size()];
+        int index = 0;
+        for(var value : parameters.values()) {
+            types[index++] = value.llvm();
+        }
+        return new dev.akarah.llvm.inst.Type.Structure(types);
     }
 }

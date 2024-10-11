@@ -22,7 +22,7 @@ public class Mutable<T> {
 
     public String toString() {
         if(this.value == null)
-            return "null";
+            return "this is null";
         return this.value.toString();
     }
 }

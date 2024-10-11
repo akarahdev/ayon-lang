@@ -104,7 +104,16 @@ public class FunctionTypeAnnotator implements AST.Visitor {
             case VariableLiteral variableLiteral -> variableLiteral.type().value =
                 codeBlocks.peek().data().localVariables()
                     .get(variableLiteral.name());
-            case CStringLiteral stringLiteral -> {
+            case CStringLiteral stringLiteral -> {}
+            case BitCast bitCast -> {}
+            case InitStructure initStructure -> {}
+            case FieldAccess fieldAccess -> {
+                var structure = (Type.UserStructure) fieldAccess.expr().type().get();
+                var resolved = ProgramTypeInformation.resolveStructure(structure.name());
+                var outputType = resolved.parameters().get(fieldAccess.field());
+                fieldAccess.type().set(outputType);
+            }
+            case Store store -> {
 
             }
             default -> throw new IllegalStateException("Unexpected value: " + expression);
