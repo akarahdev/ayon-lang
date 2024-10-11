@@ -1,5 +1,6 @@
 package dev.akarah.lang.ast.stmt;
 
+import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.expr.Expression;
 import dev.akarah.util.Mutable;
 import dev.akarah.lang.ast.Type;
@@ -7,7 +8,8 @@ import dev.akarah.lang.ast.Type;
 public record VariableDeclaration(
     String name,
     Mutable<Type> type,
-    Expression value
+    Expression value,
+    SpanData errorSpan
 ) implements Statement {
 
     @Override

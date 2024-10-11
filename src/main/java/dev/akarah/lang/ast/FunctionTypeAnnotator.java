@@ -91,7 +91,7 @@ public class FunctionTypeAnnotator implements AST.Visitor {
             case Invoke invoke -> {
                 switch (invoke.base()) {
                     case VariableLiteral variableLiteral -> {
-                        invoke.type().value = ProgramTypeInformation.resolveFunction(variableLiteral.name()).returnType();
+                        invoke.type().value = ProgramTypeInformation.resolveFunction(variableLiteral.name(), variableLiteral.errorSpan()).returnType();
                     }
                     default -> throw new IllegalStateException("uhhh not available yet sowwy");
                 }
@@ -119,11 +119,8 @@ public class FunctionTypeAnnotator implements AST.Visitor {
                 initStructure.type().set(initStructure.type().get());
             }
             case FieldAccess fieldAccess -> {
-                System.out.println(fieldAccess);
-                System.out.println(fieldAccess.expr());
                 var structure = (Type.UserStructure) fieldAccess.expr().type().get();
-                System.out.println(structure);
-                var resolved = ProgramTypeInformation.resolveStructure(structure.name());
+                var resolved = ProgramTypeInformation.resolveStructure(structure.name(), fieldAccess.errorSpan());
                 var outputType = resolved.parameters().get(fieldAccess.field());
                 fieldAccess.type().set(outputType);
             }

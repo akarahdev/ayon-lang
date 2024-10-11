@@ -1,5 +1,6 @@
 package dev.akarah.lang.ast;
 
+import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.header.Header;
 
 import java.util.ArrayList;
@@ -12,5 +13,9 @@ public record Program(
         var list = new ArrayList<Header>(headers);
         list.addAll(other.headers);
         return new Program(list);
+    }
+
+    public SpanData errorSpan() {
+        return null;
     }
 }

@@ -24,8 +24,8 @@ public class FunctionTransformer {
     public Module module;
     public Function ownedFunction;
 
-    public static String mangle(String name) {
-        var function = ProgramTypeInformation.resolveFunction(name);
+    public static String mangle(String name, SpanData span) {
+        var function = ProgramTypeInformation.resolveFunction(name, span);
         if (function != null) {
             AtomicReference<String> output = new AtomicReference<>(name.replace("::", "."));
             function.attributes().stream()
@@ -46,17 +46,17 @@ public class FunctionTransformer {
         for (var parameter : function.parameters().keySet()) {
             var p = Value.LocalVariable.random();
             f.parameter(
-                function.parameters().get(parameter).llvm(),
+                function.parameters().get(parameter).llvm(function.errorSpan()),
                 p
             );
-            var pPtr = bb.alloca(function.parameters().get(parameter).llvm());
-            bb.store(function.parameters().get(parameter).llvm(), p, pPtr);
+            var pPtr = bb.alloca(function.parameters().get(parameter).llvm(function.errorSpan()));
+            bb.store(function.parameters().get(parameter).llvm(function.errorSpan()), p, pPtr);
             function.codeBlock().data().llvmVariables().put(parameter, (Value.LocalVariable) pPtr);
         }
         var ch = convertCodeBlock(function.codeBlock());
         bb.br(ch.name());
         bb.childBlock(ch);
-        f.returns(function.returnType().llvm());
+        f.returns(function.returnType().llvm(function.errorSpan()));
         f.withBasicBlock(bb);
         return f;
     }
@@ -64,11 +64,11 @@ public class FunctionTransformer {
     public Function transform(dev.akarah.lang.ast.header.FunctionDeclaration function, Function f) {
         for (var parameter : function.parameters().keySet()) {
             f.parameter(
-                function.parameters().get(parameter).llvm(),
+                function.parameters().get(parameter).llvm(function.errorSpan()),
                 new Value.LocalVariable(parameter)
             );
         }
-        f.returns(function.returnType().llvm());
+        f.returns(function.returnType().llvm(function.errorSpan()));
         return f;
     }
 
@@ -85,10 +85,10 @@ public class FunctionTransformer {
         basicBlocks.peek().comment("begin statement: " + statement);
         switch (statement) {
             case VariableDeclaration variableDeclaration -> {
-                var local = (Value.LocalVariable) basicBlocks.peek().alloca(variableDeclaration.type().get().llvm());
+                var local = (Value.LocalVariable) basicBlocks.peek().alloca(variableDeclaration.type().get().llvm(variableDeclaration.errorSpan()));
                 codeBlock.data().llvmVariables().put(variableDeclaration.name(), local);
                 var expr = buildExpression(variableDeclaration.value(), codeBlock, true);
-                basicBlocks.peek().store(variableDeclaration.type().get().llvm(), expr, local);
+                basicBlocks.peek().store(variableDeclaration.type().get().llvm(variableDeclaration.errorSpan()), expr, local);
             }
             case IfStatement ifStatement -> {
 
@@ -116,7 +116,7 @@ public class FunctionTransformer {
                     }
                 }
                 basicBlocks.peek().ret(
-                    returnValue.value().type().get().llvm(),
+                    returnValue.value().type().get().llvm(returnValue.errorSpan()),
                     e
                 );
             }
@@ -133,10 +133,9 @@ public class FunctionTransformer {
             case IntegerLiteral integerLiteral -> Constant.constant(integerLiteral.integer());
             case FloatingLiteral floatingLiteral -> Constant.constant(floatingLiteral.floating());
             case VariableLiteral variableLiteral -> {
-                System.out.println(codeBlock.data().llvmVariables().keySet());
                 if(dereferenceLocals) {
                     yield basicBlocks.peek().load(
-                        variableLiteral.type().get().llvm(),
+                        variableLiteral.type().get().llvm(expression.errorSpan()),
                         codeBlock.data().llvmVariables().get(variableLiteral.name())
                     );
                 } else {
@@ -162,48 +161,46 @@ public class FunctionTransformer {
                     var arguments = new ArrayList<Call.Parameter>();
 
                     for (var value : invoke.arguments()) {
-                        System.out.println(value);
                         Value newArg = null;
-                        System.out.println(value.type().get());
                         newArg = buildExpression(value, codeBlock, true);
                         arguments.add(new Call.Parameter(
-                            value.type().get().llvm(),
+                            value.type().get().llvm(expression.errorSpan()),
                             newArg
                         ));
                     }
                     yield basicBlocks.peek().call(
-                        invoke.type().get().llvm(),
-                        new Value.GlobalVariable(FunctionTransformer.mangle(variableLiteral.name())),
+                        invoke.type().get().llvm(expression.errorSpan()),
+                        new Value.GlobalVariable(FunctionTransformer.mangle(variableLiteral.name(), variableLiteral.errorSpan())),
                         arguments
                     );
                 }
                 throw new IllegalStateException("Unexpected value: " + expression);
             }
             case Add binOp -> {
-                yield basicBlocks.peek().add(binOp.type().get().llvm(),
+                yield basicBlocks.peek().add(binOp.type().get().llvm(expression.errorSpan()),
                     buildExpression(binOp.lhs(), codeBlock, true),
                     buildExpression(binOp.rhs(), codeBlock, true));
             }
             case Sub binOp -> {
-                yield basicBlocks.peek().sub(binOp.type().get().llvm(),
+                yield basicBlocks.peek().sub(binOp.type().get().llvm(expression.errorSpan()),
                     buildExpression(binOp.lhs(), codeBlock, true),
                     buildExpression(binOp.rhs(), codeBlock, true));
             }
             case Mul binOp -> {
-                yield basicBlocks.peek().mul(binOp.type().get().llvm(),
+                yield basicBlocks.peek().mul(binOp.type().get().llvm(expression.errorSpan()),
                     buildExpression(binOp.lhs(), codeBlock, true),
                     buildExpression(binOp.rhs(), codeBlock, true));
             }
             case Div binOp -> {
-                yield basicBlocks.peek().sdiv(binOp.type().get().llvm(),
+                yield basicBlocks.peek().sdiv(binOp.type().get().llvm(expression.errorSpan()),
                     buildExpression(binOp.lhs(), codeBlock, true),
                     buildExpression(binOp.rhs(), codeBlock, true));
             }
             case BitCast bitCast -> {
                 yield basicBlocks.peek().bitcast(
-                    bitCast.expr().type().get().llvm(),
+                    bitCast.expr().type().get().llvm(expression.errorSpan()),
                     buildExpression(bitCast.expr(), codeBlock, true),
-                    bitCast.type().get().llvm()
+                    bitCast.type().get().llvm(expression.errorSpan())
                 );
             }
             case InitStructure initStructure -> {
@@ -212,10 +209,10 @@ public class FunctionTransformer {
                     new Value.GlobalVariable("malloc"),
                     List.of(
                         new Call.Parameter(
-                            Types.integer(32), Constant.constant(initStructure.type().get().size())))
+                            Types.integer(32), Constant.constant(initStructure.type().get().size(expression.errorSpan()))))
                 );
                 basicBlocks.peek().store(
-                    initStructure.type().get().llvm(),
+                    initStructure.type().get().llvm(expression.errorSpan()),
                     new Value.ZeroInitializer(),
                     ptr
                 );
@@ -228,11 +225,11 @@ public class FunctionTransformer {
             }
             case FieldAccess access -> {
                 var targetStructureType = ((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get());
-                var targetStructureData = ProgramTypeInformation.resolveStructure(targetStructureType.name());
+                var targetStructureData = ProgramTypeInformation.resolveStructure(targetStructureType.name(), access.errorSpan());
                 var targetFieldType = targetStructureData.parameters().get(access.field());
                 var targetFieldIndex = getIndexOf(targetStructureData.parameters(), access.field());
                 var ptr = basicBlocks.peek().getElementPtr(
-                    ((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get()).llvm(),
+                    ((dev.akarah.lang.ast.Type.UserStructure) access.expr().type().get()).llvm(expression.errorSpan()),
                     buildExpression(access.expr(), codeBlock, true),
                     Types.integer(32),
                     Constant.constant(0),
@@ -241,7 +238,7 @@ public class FunctionTransformer {
                 );
                 if(dereferenceLocals) {
                     yield basicBlocks.peek().load(
-                       targetFieldType.llvm(),
+                       targetFieldType.llvm(expression.errorSpan()),
                         ptr
                     );
                 } else {
@@ -251,7 +248,7 @@ public class FunctionTransformer {
             case Store store -> {
                 var ref = buildExpression(store.lhs(), codeBlock, false);
                 basicBlocks.peek().store(
-                    store.lhs().type().get().llvm(),
+                    store.lhs().type().get().llvm(expression.errorSpan()),
                     buildExpression(store.rhs(), codeBlock, true),
                     ref
                 );

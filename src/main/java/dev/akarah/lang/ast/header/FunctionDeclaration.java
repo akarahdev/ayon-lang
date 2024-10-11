@@ -1,5 +1,6 @@
 package dev.akarah.lang.ast.header;
 
+import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.AST;
 import dev.akarah.lang.ast.Type;
 
@@ -11,7 +12,8 @@ public record FunctionDeclaration(
     String name,
     LinkedHashMap<String, Type> parameters,
     Type returnType,
-    List<Attribute> attributes
+    List<Attribute> attributes,
+    SpanData errorSpan
 ) implements Header {
     public void visit(AST.Visitor visitor) {
         visitor.header(this);

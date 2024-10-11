@@ -1,9 +1,11 @@
 package dev.akarah.lang.ast;
 
+import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.header.Function;
 import dev.akarah.lang.ast.header.FunctionDeclaration;
 import dev.akarah.lang.ast.header.Header;
 import dev.akarah.lang.ast.header.StructureDeclaration;
+import dev.akarah.lang.error.CompileError;
 
 import java.util.HashMap;
 
@@ -36,28 +38,28 @@ public class ProgramTypeInformation {
         return headers.get(name);
     }
 
-    public static FunctionDeclaration resolveFunction(String name) {
-        System.out.println(name);
+    public static FunctionDeclaration resolveFunction(String name, SpanData span) {
         var tmp = headers.get(name);
         return switch (tmp) {
             case Function function -> new FunctionDeclaration(
                 function.name(),
                 function.parameters(),
                 function.returnType(),
-                function.attributes()
+                function.attributes(),
+                function.errorSpan()
             );
             case FunctionDeclaration declaration -> declaration;
-            default -> throw new IllegalStateException("Unexpected value: " + tmp);
+            default -> throw new CompileError.RawMessage(name + " is not a valid function", span);
         };
     }
 
-    public static StructureDeclaration resolveStructure(String name) {
+    public static StructureDeclaration resolveStructure(String name, SpanData span) {
         var tmp = headers.get(name);
         if(!headers.containsKey(name)) {
-            throw new RuntimeException("unable to resolve structure " + name);
+            throw new CompileError.RawMessage("unable to resolve structure " + name, span);
         }
         if(!(tmp instanceof StructureDeclaration)) {
-            throw new RuntimeException(name + " is not a struct");
+            throw new CompileError.RawMessage(name + " is not a struct", span);
         }
         return (StructureDeclaration) tmp;
     }

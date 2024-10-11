@@ -1,11 +1,12 @@
 package dev.akarah.lang.ast.expr;
 
+import dev.akarah.lang.SpanData;
 import dev.akarah.util.Mutable;
 import dev.akarah.lang.ast.Type;
 
 import java.nio.charset.StandardCharsets;
 
-public record CStringLiteral(String contents) implements Expression {
+public record CStringLiteral(String contents, SpanData errorSpan) implements Expression {
     @Override
     public void accept(Visitor visitor) {
         visitor.expression(this);

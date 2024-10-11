@@ -47,6 +47,7 @@ public class Parser {
     }
 
     public Attribute parseAttribute() {
+        var span = tokenReader.generateSpan();
         var at = tokenReader.match(it -> it instanceof Token.At);
         var ident = parseIdentifier();
         var args = new ArrayList<Expression>();
@@ -64,7 +65,8 @@ public class Parser {
         }
         return new Attribute(
             ident,
-            args
+            args,
+            span
         );
     }
 
@@ -94,6 +96,7 @@ public class Parser {
 
     public StructureDeclaration parseStructureDeclaration(List<Attribute> attributes) {
         skipWhitespace();
+        var span = tokenReader.generateSpan();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("record"));
         var name = parseIdentifier();
 
@@ -115,13 +118,15 @@ public class Parser {
         return new StructureDeclaration(
             name,
             parameters,
-            attributes
+            attributes,
+            span
         );
 
     }
 
     public FunctionDeclaration parseFunctionDeclaration(List<Attribute> attributes) {
         skipWhitespace();
+        var span = tokenReader.generateSpan();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("declare"));
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("fn"));
@@ -168,12 +173,14 @@ public class Parser {
             ident,
             params,
             returnType,
-            attributes
+            attributes,
+            span
         );
     }
 
     public Function parseFunction(List<Attribute> attributes) {
         skipWhitespace();
+        var span = tokenReader.generateSpan();
         tokenReader.match(it -> it instanceof Token.Keyword kw && kw.keyword().equals("fn"));
         skipWhitespace();
         var ident = parseIdentifier();
@@ -222,19 +229,25 @@ public class Parser {
                 params,
                 returnType,
                 parseCodeBlock(),
-                attributes
+                attributes,
+                span
             );
         } else {
+
+            var span2 = tokenReader.generateSpan();
             tokenReader.match(it -> it instanceof Token.Equals);
+
             return new Function(
                 ident,
                 new LinkedHashMap<>(),
                 returnType,
                 new CodeBlock(
-                    List.of(new ReturnValue(parseExpression())),
-                    new CodeBlockData(new HashMap<>(), new HashMap<>())
+                    List.of(new ReturnValue(parseExpression(), span2)),
+                    new CodeBlockData(new HashMap<>(), new HashMap<>()),
+                    span2
                 ),
-                attributes
+                attributes,
+                span
             );
         }
     }
@@ -253,14 +266,16 @@ public class Parser {
             skipWhitespace();
         }
         skipWhitespace();
+        var span = tokenReader.generateSpan();
         tokenReader.match(it -> it instanceof Token.CloseBrace,
             it -> { throw new CompileError.UnexpectedTokens(it, Token.CloseBrace.class); });
 
-        return new CodeBlock(stmt, new CodeBlockData(new HashMap<>(), new HashMap<>()));
+        return new CodeBlock(stmt, new CodeBlockData(new HashMap<>(), new HashMap<>()), span);
     }
 
     public Statement parseStatement() {
         skipWhitespace();
+        var span = tokenReader.generateSpan();
         return switch (this.tokenReader.peek()) {
             case Token.Keyword kw -> switch (kw.keyword()) {
                 case "if" -> {
@@ -271,14 +286,15 @@ public class Parser {
                     if (tokenReader.peek() instanceof Token.Keyword tk && tk.keyword().equals("else")) {
                         tokenReader.read();
                         var ifFalse = parseCodeBlock();
-                        yield new IfStatement(cond, ifTrue, ifFalse);
+                        yield new IfStatement(cond, ifTrue, ifFalse, span);
                     } else {
-                        yield new IfStatement(cond, ifTrue, new CodeBlock(List.of(), new CodeBlockData(new HashMap<>(), new HashMap<>())));
+                        yield new IfStatement(cond, ifTrue, new CodeBlock(List.of(), new CodeBlockData(new HashMap<>(), new HashMap<>()), span), span);
                     }
                 }
                 case "var" -> {
                     tokenReader.read();
 
+                    var nameSpan = tokenReader.generateSpan();
                     var name = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
 
                     var ty = new Mutable<Type>();
@@ -292,13 +308,12 @@ public class Parser {
 
                     var expr = parseExpression();
 
-                    yield new VariableDeclaration(name.literal(), ty, expr);
+                    yield new VariableDeclaration(name.literal(), ty, expr, nameSpan);
                 }
                 case "return" -> {
                     tokenReader.read();
-
                     var expr = parseExpression();
-                    yield new ReturnValue(expr);
+                    yield new ReturnValue(expr, span);
                 }
                 default -> parseExpression();
             };
@@ -314,9 +329,10 @@ public class Parser {
         var expr = parseFactor();
         while (true) {
             if (tokenReader.peek() instanceof Token.Equals) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Equals);
                 var rhs = parseTerm();
-                expr = new Store(expr, rhs, new Mutable<>());
+                expr = new Store(expr, rhs, new Mutable<>(), span);
             } else break;
         }
         return expr;
@@ -327,13 +343,15 @@ public class Parser {
         var expr = parseTerm();
         while (true) {
             if (tokenReader.peek() instanceof Token.Star) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Star);
                 var rhs = parseTerm();
-                expr = new Mul(expr, rhs, new Mutable<>());
+                expr = new Mul(expr, rhs, new Mutable<>(), span);
             } else if (tokenReader.peek() instanceof Token.Slash) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Slash);
                 var rhs = parseTerm();
-                expr = new Div(expr, rhs, new Mutable<>());
+                expr = new Div(expr, rhs, new Mutable<>(), span);
             } else break;
         }
         return expr;
@@ -343,13 +361,15 @@ public class Parser {
         var expr = parseNegation();
         while (true) {
             if (tokenReader.peek() instanceof Token.Plus) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Plus);
                 var rhs = parseTerm();
-                expr = new Add(expr, rhs, new Mutable<>());
+                expr = new Add(expr, rhs, new Mutable<>(), span);
             } else if (tokenReader.peek() instanceof Token.Minus) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Minus);
                 var rhs = parseTerm();
-                expr = new Sub(expr, rhs, new Mutable<>());
+                expr = new Sub(expr, rhs, new Mutable<>(), span);
             } else break;
         }
         return expr;
@@ -359,8 +379,9 @@ public class Parser {
         var expr = parseUfcs();
         while (true) {
             if (tokenReader.peek() instanceof Token.Minus) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Minus);
-                expr = new Negate(expr, new Mutable<>());
+                expr = new Negate(expr, new Mutable<>(), span);
             } else break;
         }
         return expr;
@@ -370,19 +391,19 @@ public class Parser {
         var expr = parsePostfixExpression();
         while (true) {
             if (tokenReader.peek() instanceof Token.Period period) {
+                var span = tokenReader.generateSpan();
                 tokenReader.read();
                 var lhs = parseExpression();
                 if (lhs instanceof Invoke invoke) {
                     invoke.arguments().addFirst(expr);
                     expr = invoke;
                 } else {
-                    throw new RuntimeException(lhs + " must be an invocation trust me bro");
+                    throw new CompileError.RawMessage("UFCS expression must be an invocation", lhs.errorSpan());
                 }
             } else {
                 break;
             }
         }
-        System.out.println(expr);
         return expr;
     }
 
@@ -390,15 +411,18 @@ public class Parser {
         var expr = parseBaseExpression();
         while (true) {
             if (tokenReader.peek() instanceof Token.Arrow arrow) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Arrow);
                 var field = parseIdentifier();
-                expr = new FieldAccess(expr, field, new Mutable<>());
+                expr = new FieldAccess(expr, field, new Mutable<>(), span);
             } else if (tokenReader.peek() instanceof Token.OpenBracket op) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.OpenBracket);
                 var index = parseExpression();
                 tokenReader.match(it -> it instanceof Token.CloseBracket);
-                expr = new Subscript(expr, index, new Mutable<>());
+                expr = new Subscript(expr, index, new Mutable<>(), span);
             } else if (tokenReader.peek() instanceof Token.OpenParen op) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.OpenParen);
                 var exprs = new ArrayList<Expression>();
                 skipWhitespace();
@@ -410,11 +434,12 @@ public class Parser {
                         tokenReader.match(it -> it instanceof Token.Comma);
                 }
                 tokenReader.match(it -> it instanceof Token.CloseParen);
-                expr = new Invoke(expr, exprs, new Mutable<>());
+                expr = new Invoke(expr, exprs, new Mutable<>(), span);
             } else if (tokenReader.peek() instanceof Token.Keyword kw && kw.keyword().equals("as")) {
+                var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Keyword);
                 var ty = parseType();
-                expr = new BitCast(expr, new Mutable<>(ty));
+                expr = new BitCast(expr, new Mutable<>(ty), span);
             } else break;
         }
         return expr;
@@ -424,21 +449,22 @@ public class Parser {
     public Expression parseBaseExpression() {
         skipWhitespace();
         var t = this.tokenReader.peek();
+        var span = tokenReader.generateSpan();
         return switch (this.tokenReader.read()) {
-            case Token.IntegerLiteral il -> new IntegerLiteral(il.literal(), new Mutable<>());
-            case Token.FloatingLiteral fl -> new FloatingLiteral(fl.literal(), new Mutable<>());
+            case Token.IntegerLiteral il -> new IntegerLiteral(il.literal(), new Mutable<>(), span);
+            case Token.FloatingLiteral fl -> new FloatingLiteral(fl.literal(), new Mutable<>(), span);
             case Token.Keyword kw -> switch (kw.keyword()) {
-                case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)));
-                case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)));
+                case "true" -> new IntegerLiteral(1, new Mutable<>(new Type.Integer(1)), span);
+                case "false" -> new IntegerLiteral(0, new Mutable<>(new Type.Integer(1)), span);
                 case "init" -> {
-                    yield new InitStructure(new Mutable<>(parseType()));
+                    yield new InitStructure(new Mutable<>(parseType()), span);
                 }
-                default -> throw new RuntimeException("uuhhh");
+                default -> throw new CompileError.RawMessage("this keyword is not a valid expression", span);
             };
             case Token.IdentifierLiteral vr -> {
                 tokenReader.backtrack();
                 var parsed = parseIdentifier();
-                yield new VariableLiteral(parsed, new Mutable<>());
+                yield new VariableLiteral(parsed, new Mutable<>(), span);
             }
             case Token.OpenParen op -> {
                 var inner = parseExpression();
@@ -446,9 +472,9 @@ public class Parser {
                 yield inner;
             }
             case Token.StringLiteral sl -> {
-                yield new CStringLiteral(sl.literal());
+                yield new CStringLiteral(sl.literal(), span);
             }
-            default -> throw new RuntimeException("not an expression " + t);
+            default -> throw new CompileError.RawMessage("not an expression", span);
         };
     }
 

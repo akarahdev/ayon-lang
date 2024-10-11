@@ -1,12 +1,14 @@
 package dev.akarah.lang.ast.stmt;
 
+import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.expr.Expression;
 
 public record IfStatement(
     Expression condition,
     CodeBlock ifTrue,
-    CodeBlock ifFalse
+    CodeBlock ifFalse,
+    SpanData errorSpan
 ) implements Statement {
 
     @Override

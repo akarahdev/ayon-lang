@@ -1,5 +1,6 @@
 package dev.akarah.lang.ast.header;
 
+import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.AST;
 import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.FunctionTypeAnnotator;
@@ -15,7 +16,8 @@ public record Function(
     LinkedHashMap<String, Type> parameters,
     Type returnType,
     CodeBlock codeBlock,
-    List<Attribute> attributes
+    List<Attribute> attributes,
+    SpanData errorSpan
 ) implements Header {
     public void visit(AST.Visitor visitor) {
         visitor.header(this);
