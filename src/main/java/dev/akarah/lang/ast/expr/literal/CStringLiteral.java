@@ -1,7 +1,10 @@
 package dev.akarah.lang.ast.expr.literal;
 
 import dev.akarah.lang.SpanData;
+import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.expr.Expression;
+import dev.akarah.lang.llvm.FunctionTransformer;
+import dev.akarah.llvm.inst.Value;
 import dev.akarah.util.Mutable;
 import dev.akarah.lang.ast.Type;
 
@@ -11,6 +14,22 @@ public record CStringLiteral(String contents, SpanData errorSpan) implements Exp
     @Override
     public void accept(Visitor visitor) {
         visitor.expression(this);
+    }
+
+    @Override
+    public Value llvm(CodeBlock codeBlock, boolean dereferenceLocals, FunctionTransformer transformer) {
+        var global = Value.GlobalVariable.random();
+        transformer.module.newGlobal(
+            global,
+            globalVariable -> {
+                globalVariable.withType(new dev.akarah.llvm.inst.Type.Array(
+                    this.contents().getBytes(StandardCharsets.UTF_8).length + 1,
+                    new dev.akarah.llvm.inst.Type.Integer(8)
+                ));
+                globalVariable.withValue(new Value.CStringConstant(this.contents() + "\\\\00"));
+            }
+        );
+        return global;
     }
 
     @Override
