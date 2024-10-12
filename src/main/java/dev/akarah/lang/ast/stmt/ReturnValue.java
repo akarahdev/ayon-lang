@@ -24,11 +24,16 @@ public record ReturnValue(
 
     @Override
     public void llvm(CodeBlock codeBlock, FunctionTransformer transformer) {
-        Value e = null;
-        if (this.value().type().get() instanceof dev.akarah.lang.ast.Type.UserStructure userStructure) {
-            e = transformer.buildExpression(this.value(), codeBlock, true);
-        } else {
-            e = transformer.buildExpression(this.value(), codeBlock, true);
+        var e = transformer.buildExpression(this.value(), codeBlock, true);
+        if(this.value.type().get().isRecord()) {
+            transformer.basicBlocks.peek().call(
+                Types.integer(16),
+                ReferenceCountingLibrary.INCREMENT_REFERENCE_COUNT,
+                List.of(new Call.Parameter(
+                    Types.pointerTo(Types.VOID),
+                    e
+                ))
+            );
         }
         for (var variableName : codeBlock.data().localVariables().keySet()) {
             if (codeBlock.data().localVariables().get(variableName) instanceof dev.akarah.lang.ast.Type.UserStructure) {

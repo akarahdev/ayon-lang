@@ -57,6 +57,7 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
                 function.returns(Types.integer(16));
 
                 var bb = BasicBlock.of(Value.LocalVariable.random());
+                debugPrint(bb, module, "Decreasing refcount");
                 var fieldPtr = bb.getElementPtr(
                     Types.integer(16),
                     p1,
@@ -74,14 +75,17 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
                     addedValue,
                     fieldPtr
                 );
+
+                debugPrint(bb, module, "Decreased refcount");
                 bb.ifThenElse(
                     bb.icmp(
-                        ComparisonOperation.SIGNED_LESS_THAN_OR_EQUAL,
+                        ComparisonOperation.EQUAL,
                         Types.integer(16),
                         addedValue,
                         Constant.constant(0)
                     ),
                     ifTrue -> {
+                        debugPrint(ifTrue, module, "Freeing refcounted memory");
                         ifTrue.perform(new Instruction() {
                             @Override
                             public String ir() {
@@ -91,12 +95,33 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
                         ifTrue.ret(Types.integer(16), addedValue);
                     },
                     ifFalse -> {
+                        debugPrint(ifFalse, module, "Keeping refcounted memory");
                         ifFalse.ret(Types.integer(16), addedValue);
                     }
                 );
 
                 function.withBasicBlock(bb);
             }
+        );
+    }
+
+    public static void debugPrint(BasicBlock basicBlock, Module module, String message) {
+        var global = Value.GlobalVariable.random();
+        module.newGlobal(
+            global,
+            globalVariable -> {
+                globalVariable
+                    .withType(Types.array(message.length()+1, Types.integer(8)))
+                    .withValue(new Value.CStringConstant(message + "\\\\00"));
+            }
+        );
+        basicBlock.call(
+            Types.integer(32),
+            new Value.GlobalVariable("puts"),
+            List.of(new Call.Parameter(
+                Types.pointer(),
+                global
+            ))
         );
     }
 }
