@@ -3,9 +3,15 @@ package dev.akarah.util;
 import dev.akarah.llvm.Module;
 import dev.akarah.llvm.cfg.BasicBlock;
 import dev.akarah.llvm.inst.Constant;
+import dev.akarah.llvm.inst.Instruction;
 import dev.akarah.llvm.inst.Types;
 import dev.akarah.llvm.inst.Value;
+import dev.akarah.llvm.inst.misc.Call;
+import dev.akarah.llvm.inst.ops.ComparisonOperation;
+import dev.akarah.llvm.ir.IRFormatter;
 import dev.akarah.llvm.utils.LLVMLibrary;
+
+import java.util.List;
 
 public class ReferenceCountingLibrary implements LLVMLibrary {
     public static Value.GlobalVariable INCREMENT_REFERENCE_COUNT = new Value.GlobalVariable("lang.refcount.inc");
@@ -68,7 +74,26 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
                     addedValue,
                     fieldPtr
                 );
-                bb.ret(Types.integer(16), addedValue);
+                bb.ifThenElse(
+                    bb.icmp(
+                        ComparisonOperation.SIGNED_LESS_THAN_OR_EQUAL,
+                        Types.integer(16),
+                        addedValue,
+                        Constant.constant(0)
+                    ),
+                    ifTrue -> {
+                        ifTrue.perform(new Instruction() {
+                            @Override
+                            public String ir() {
+                                return IRFormatter.format("call void @free(ptr {})", p1);
+                            }
+                        });
+                        ifTrue.ret(Types.integer(16), addedValue);
+                    },
+                    ifFalse -> {
+                        ifFalse.ret(Types.integer(16), addedValue);
+                    }
+                );
 
                 function.withBasicBlock(bb);
             }

@@ -2,6 +2,7 @@ package dev.akarah.lang.llvm;
 
 import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.ProgramTypeInformation;
+import dev.akarah.lang.ast.Type;
 import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.expr.*;
 import dev.akarah.lang.ast.expr.binop.*;
@@ -56,6 +57,13 @@ public class FunctionTransformer {
                 function.parameters().get(parameter).llvm(function.errorSpan()),
                 p
             );
+            if(function.parameters().get(parameter) instanceof Type.UserStructure) {
+                bb.call(
+                    Types.integer(16),
+                    ReferenceCountingLibrary.INCREMENT_REFERENCE_COUNT,
+                    List.of(new Call.Parameter(Types.pointer(), p))
+                );
+            }
             var pPtr = bb.alloca(function.parameters().get(parameter).llvm(function.errorSpan()));
             bb.store(function.parameters().get(parameter).llvm(function.errorSpan()), p, pPtr);
             function.codeBlock().data().llvmVariables().put(parameter, (Value.LocalVariable) pPtr);

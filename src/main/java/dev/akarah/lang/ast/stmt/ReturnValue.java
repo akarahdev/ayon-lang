@@ -32,15 +32,29 @@ public record ReturnValue(
         }
         for (var variableName : codeBlock.data().localVariables().keySet()) {
             if (codeBlock.data().localVariables().get(variableName) instanceof dev.akarah.lang.ast.Type.UserStructure) {
+                var loaded = transformer.basicBlocks.peek().load(
+                    Types.pointer(),
+                    codeBlock.data().llvmVariables().get(variableName)
+                );
                 transformer.basicBlocks.peek().call(
                     Types.integer(16),
                     ReferenceCountingLibrary.DECREMENT_REFERENCE_COUNT,
                     List.of(new Call.Parameter(
                         Types.pointerTo(Types.VOID),
-                        codeBlock.data().llvmVariables().get(variableName)
+                        loaded
                     ))
                 );
             }
+        }
+        for(var alloc : codeBlock.data().extraAllocations()) {
+            transformer.basicBlocks.peek().call(
+                Types.integer(16),
+                ReferenceCountingLibrary.DECREMENT_REFERENCE_COUNT,
+                List.of(new Call.Parameter(
+                    Types.pointerTo(Types.VOID),
+                    alloc
+                ))
+            );
         }
         transformer.basicBlocks.peek().ret(
             this.value().type().get().llvm(this.errorSpan()),
