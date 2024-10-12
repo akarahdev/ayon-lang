@@ -2,6 +2,11 @@ package dev.akarah.lang.ast;
 
 import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.expr.*;
+import dev.akarah.lang.ast.expr.binop.*;
+import dev.akarah.lang.ast.expr.cmp.*;
+import dev.akarah.lang.ast.expr.literal.*;
+import dev.akarah.lang.ast.expr.unop.BitCast;
+import dev.akarah.lang.ast.expr.unop.Negate;
 import dev.akarah.lang.ast.header.Function;
 import dev.akarah.lang.ast.header.Header;
 import dev.akarah.lang.ast.stmt.Statement;
@@ -54,7 +59,6 @@ public class FunctionTypeAnnotator implements AST.Visitor {
 
     @Override
     public void statement(Statement statement) {
-        System.out.println(codeBlocks.peek().data().localVariables());
         switch (statement) {
             case VariableDeclaration variableDeclaration -> {
                 if (variableDeclaration.type().value != null) {
@@ -70,14 +74,13 @@ public class FunctionTypeAnnotator implements AST.Visitor {
             }
             case Expression expression -> this.expression(expression);
             default -> {
-                System.out.println("Nooping on " + statement);
+
             }
         }
     }
 
     @Override
     public void expression(Expression expression) {
-        System.out.println("Expr: " + expression);
         switch (expression) {
             case IntegerLiteral il -> {
                 if (il.type().value == null) {
@@ -116,7 +119,6 @@ public class FunctionTypeAnnotator implements AST.Visitor {
             case Subscript subscript -> {
             }
             case VariableLiteral variableLiteral -> {
-                System.out.println("locals: " + codeBlocks.peek().data().localVariables());
                 if(codeBlocks.peek().data().localVariables().containsKey(variableLiteral.name())) {
                     variableLiteral.type().value =
                         codeBlocks.peek().data().localVariables()
@@ -139,14 +141,18 @@ public class FunctionTypeAnnotator implements AST.Visitor {
                 var structure = (Type.UserStructure) fieldAccess.expr().type().get();
                 var resolved = ProgramTypeInformation.resolveStructure(structure.name(), fieldAccess.expr().errorSpan());
                 var outputType = resolved.parameters().get(fieldAccess.field());
-                System.out.println("OUTPUT TYPE: " + outputType);
-                System.out.println("EXPR TYPE: " + fieldAccess.expr().type());
                 fieldAccess.type().set(outputType);
             }
             case Store store -> {
 
             }
-            default -> throw new IllegalStateException("Unexpected value: " + expression);
+            case GreaterThan op -> op.type().set(op.lhs().type().get());
+            case GreaterThanOrEq op -> op.type().set(op.lhs().type().get());
+            case LessThan op -> op.type().set(op.lhs().type().get());
+            case LessThanOrEq op -> op.type().set(op.lhs().type().get());
+            case EqualTo eq -> {}
+            case NullLiteral nullLiteral -> nullLiteral.type().set(new Type.UserStructure("std::any"));
+            default -> throw new IllegalStateException("Unexpected value: " + expression + "(" + expression.getClass() + ")");
         }
     }
 }

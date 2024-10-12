@@ -166,4 +166,16 @@ public sealed interface Type {
 
     dev.akarah.llvm.inst.Type llvm(SpanData span);
     long size(SpanData span);
+
+    default boolean isInteger() {
+        return this instanceof Integer;
+    }
+
+    default boolean isRecord() {
+        return this instanceof UserStructure;
+    }
+
+    default boolean isFloat() {
+        return this instanceof F32 || this instanceof F64 || this instanceof F128;
+    }
 }

@@ -11,11 +11,10 @@ public record Invoke(Expression base, List<Expression> arguments, Mutable<Type> 
     @Override
     public void accept(Visitor visitor) {
         visitor.expression(base);
-        arguments.forEach(visitor::expression);
+        arguments.forEach(it -> it.accept(visitor));
         visitor.expression(arguments.getLast());
         visitor.expression(arguments.getFirst());
         visitor.statement(this);
-        System.out.println("POST PROC: " + this);
     }
 
     @Override

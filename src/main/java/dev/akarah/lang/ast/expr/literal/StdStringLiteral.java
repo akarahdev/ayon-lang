@@ -1,10 +1,9 @@
-package dev.akarah.lang.ast.expr;
+package dev.akarah.lang.ast.expr.literal;
 
 import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.Type;
+import dev.akarah.lang.ast.expr.Expression;
 import dev.akarah.util.Mutable;
-
-import java.nio.charset.StandardCharsets;
 
 public record StdStringLiteral(String contents, SpanData errorSpan) implements Expression {
     @Override

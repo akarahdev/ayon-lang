@@ -39,18 +39,22 @@ public class ProgramTypeInformation {
     }
 
     public static FunctionDeclaration resolveFunction(String name, SpanData span) {
-        var tmp = headers.get(name);
-        return switch (tmp) {
-            case Function function -> new FunctionDeclaration(
-                function.name(),
-                function.parameters(),
-                function.returnType(),
-                function.attributes(),
-                function.errorSpan()
-            );
-            case FunctionDeclaration declaration -> declaration;
-            default -> throw new CompileError.RawMessage(name + " is not a valid function", span);
-        };
+        try {
+            var tmp = headers.get(name);
+            return switch (tmp) {
+                case Function function -> new FunctionDeclaration(
+                    function.name(),
+                    function.parameters(),
+                    function.returnType(),
+                    function.attributes(),
+                    function.errorSpan()
+                );
+                case FunctionDeclaration declaration -> declaration;
+                default -> throw new CompileError.RawMessage(name + " is not a valid function", span);
+            };
+        } catch (NullPointerException exception) {
+            throw new CompileError.RawMessage("failed to resolve function: '" + name + "'", span);
+        }
     }
 
     public static StructureDeclaration resolveStructure(String name, SpanData span) {

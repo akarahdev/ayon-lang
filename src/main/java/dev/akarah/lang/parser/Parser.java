@@ -5,6 +5,10 @@ import dev.akarah.lang.ast.Type;
 import dev.akarah.lang.ast.block.CodeBlock;
 import dev.akarah.lang.ast.block.CodeBlockData;
 import dev.akarah.lang.ast.expr.*;
+import dev.akarah.lang.ast.expr.binop.*;
+import dev.akarah.lang.ast.expr.cmp.*;
+import dev.akarah.lang.ast.expr.literal.*;
+import dev.akarah.lang.ast.expr.unop.BitCast;
 import dev.akarah.lang.ast.header.*;
 import dev.akarah.lang.ast.stmt.IfStatement;
 import dev.akarah.lang.ast.stmt.ReturnValue;
@@ -330,7 +334,7 @@ public class Parser {
     public Expression parseStorage() {
         var expr = parseFactor();
         while (true) {
-            if (tokenReader.peek() instanceof Token.Equals) {
+            if (tokenReader.peek() instanceof Token.Equals && !(tokenReader.peek(1) instanceof Token.Equals)) {
                 var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Equals);
                 var rhs = parseFactor();
@@ -362,19 +366,65 @@ public class Parser {
     }
 
     public Expression parseTerm() {
-        var expr = parseUfcs();
+        var expr = parseConditions$1();
         while (true) {
             if (tokenReader.peek() instanceof Token.Plus) {
                 var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Plus);
-                var rhs = parseTerm();
+                var rhs = parseConditions$1();
                 expr = new Add(expr, rhs, new Mutable<>(), span);
             } else if (tokenReader.peek() instanceof Token.Minus) {
                 var span = tokenReader.generateSpan();
                 tokenReader.match(it -> it instanceof Token.Minus);
-                var rhs = parseTerm();
+                var rhs = parseConditions$1();
                 expr = new Sub(expr, rhs, new Mutable<>(), span);
             } else break;
+        }
+        return expr;
+    }
+
+    public Expression parseConditions$1() {
+        var expr = parseUfcs();
+        while (true) {
+            if (tokenReader.peek() instanceof Token.GreaterThan) {
+                var span = tokenReader.generateSpan();
+                tokenReader.match(it -> it instanceof Token.GreaterThan);
+                if(tokenReader.peek() instanceof Token.Equals) {
+                    tokenReader.match(it -> it instanceof Token.Equals);
+                    var rhs = parseUfcs();
+                    expr = new GreaterThanOrEq(expr, rhs, span);
+                } else {
+                    var rhs = parseUfcs();
+                    expr = new GreaterThan(expr, rhs, span);
+                }
+            } else if (tokenReader.peek() instanceof Token.LessThan) {
+                var span = tokenReader.generateSpan();
+                tokenReader.match(it -> it instanceof Token.LessThan);
+                if(tokenReader.peek() instanceof Token.Equals) {
+                    tokenReader.match(it -> it instanceof Token.Equals);
+                    var rhs = parseUfcs();
+                    expr = new LessThanOrEq(expr, rhs, span);
+                } else {
+                    var rhs = parseUfcs();
+                    expr = new LessThan(expr, rhs, span);
+                }
+            } else if(tokenReader.peek() instanceof Token.Equals && tokenReader.peek(1) instanceof Token.Equals) {
+                var span = tokenReader.generateSpan();
+                tokenReader.match(it -> it instanceof Token.Equals);
+                tokenReader.match(it -> it instanceof Token.Equals);
+                var rhs = parseUfcs();
+                expr = new EqualTo(expr, rhs, span);
+            } else if(tokenReader.peek() instanceof Token.Ampersand) {
+                var span = tokenReader.generateSpan();
+                tokenReader.match(it -> it instanceof Token.Ampersand);
+                var rhs = parseUfcs();
+                expr = new And(expr, rhs, new Mutable<>(), span);
+            } else if(tokenReader.peek() instanceof Token.Line) {
+                var span = tokenReader.generateSpan();
+                tokenReader.match(it -> it instanceof Token.Line);
+                var rhs = parseUfcs();
+                expr = new Or(expr, rhs, new Mutable<>(), span);
+            } break;
         }
         return expr;
     }

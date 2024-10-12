@@ -1,10 +1,11 @@
-package dev.akarah.lang.ast.expr;
+package dev.akarah.lang.ast.expr.binop;
 
 import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.Type;
+import dev.akarah.lang.ast.expr.Expression;
 import dev.akarah.util.Mutable;
 
-public record BitCast(Expression expr, Mutable<Type> type, SpanData errorSpan) implements Expression {
+public record FieldAccess(Expression expr, String field, Mutable<Type> type, SpanData errorSpan) implements Expression {
     @Override
     public void accept(Visitor visitor) {
         expr.accept(visitor);
@@ -13,6 +14,6 @@ public record BitCast(Expression expr, Mutable<Type> type, SpanData errorSpan) i
 
     @Override
     public String toString() {
-        return expr + " as " + type;
+        return "(" + expr + "->" + field + " as " + type + ")";
     }
 }

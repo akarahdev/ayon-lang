@@ -1,6 +1,7 @@
-package dev.akarah.lang.ast.expr;
+package dev.akarah.lang.ast.expr.literal;
 
 import dev.akarah.lang.SpanData;
+import dev.akarah.lang.ast.expr.Expression;
 import dev.akarah.util.Mutable;
 import dev.akarah.lang.ast.Type;
 

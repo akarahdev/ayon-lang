@@ -76,17 +76,6 @@ public class Main {
                         ftd.header(function);
                         function.accept(ftd);
 
-                        System.out.println(function.name());
-                        System.out.println("-----");
-                        System.out.println(
-                            function.codeBlock()
-                                .statements()
-                                .stream()
-                                .map(Statement::toString)
-                                .collect(Collectors.joining("\n"))
-                        );
-                        System.out.println("-----");
-
                         var ftc = new FunctionTypeChecker();
                         function.accept(ftc);
                     }
