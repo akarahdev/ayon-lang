@@ -113,6 +113,24 @@ public class FunctionTypeAnnotator implements AST.Visitor {
                     default -> throw new IllegalStateException("uhhh not available yet sowwy");
                 }
             }
+            case UfcsInvoke invoke -> {
+                for(var arg : invoke.arguments())
+                    this.expression(arg);
+
+                try {
+                    var resolution = ProgramTypeInformation.resolveFunction(
+                        invoke.callee().type().toString() + "::" + invoke.functionName(),
+                        invoke.errorSpan()
+                    );
+                    invoke.functionName().set(resolution.name());
+                } catch (CompileError e) {
+                    var resolution = ProgramTypeInformation.resolveFunction(
+                        invoke.functionName().get(),
+                        invoke.errorSpan()
+                    );
+                }
+                invoke.type().set(ProgramTypeInformation.resolveFunction(invoke.functionName().get(), invoke.functionNameSpan()).returnType());
+            }
             case Mul mul -> mul.type().value = mul.lhs().type().value;
             case Negate negate -> negate.type().value = negate.value().type().value;
             case Sub sub -> sub.type().value = sub.lhs().type().value;

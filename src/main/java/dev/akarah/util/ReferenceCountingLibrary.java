@@ -106,22 +106,22 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
     }
 
     public static void debugPrint(BasicBlock basicBlock, Module module, String message) {
-        var global = Value.GlobalVariable.random();
-        module.newGlobal(
-            global,
-            globalVariable -> {
-                globalVariable
-                    .withType(Types.array(message.length()+1, Types.integer(8)))
-                    .withValue(new Value.CStringConstant(message + "\\\\00"));
-            }
-        );
-        basicBlock.call(
-            Types.integer(32),
-            new Value.GlobalVariable("puts"),
-            List.of(new Call.Parameter(
-                Types.pointer(),
-                global
-            ))
-        );
+//        var global = Value.GlobalVariable.random();
+//        module.newGlobal(
+//            global,
+//            globalVariable -> {
+//                globalVariable
+//                    .withType(Types.array(message.length()+1, Types.integer(8)))
+//                    .withValue(new Value.CStringConstant(message + "\\\\00"));
+//            }
+//        );
+//        basicBlock.call(
+//            Types.integer(32),
+//            new Value.GlobalVariable("puts"),
+//            List.of(new Call.Parameter(
+//                Types.pointer(),
+//                global
+//            ))
+//        );
     }
 }

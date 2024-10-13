@@ -437,8 +437,14 @@ public class Parser {
                 tokenReader.read();
                 var lhs = parseExpression();
                 if (lhs instanceof Invoke invoke) {
-                    invoke.arguments().addFirst(expr);
-                    expr = invoke;
+                    expr = new UfcsInvoke(
+                        expr,
+                        new Mutable<>(((VariableLiteral) invoke.base()).name()),
+                        invoke.base().errorSpan(),
+                        invoke.arguments(),
+                        new Mutable<>(),
+                        span
+                    );
                 } else {
                     throw new CompileError.RawMessage("UFCS expression must be an invocation", lhs.errorSpan());
                 }
