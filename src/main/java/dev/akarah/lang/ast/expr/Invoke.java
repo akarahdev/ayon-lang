@@ -19,8 +19,6 @@ public record Invoke(Expression base, List<Expression> arguments, Mutable<Type> 
     public void accept(Visitor visitor) {
         visitor.expression(base);
         arguments.forEach(it -> it.accept(visitor));
-        visitor.expression(arguments.getLast());
-        visitor.expression(arguments.getFirst());
         visitor.statement(this);
     }
 
