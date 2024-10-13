@@ -6,6 +6,8 @@ import dev.akarah.llvm.inst.Constant;
 import dev.akarah.llvm.inst.Instruction;
 import dev.akarah.llvm.inst.Types;
 import dev.akarah.llvm.inst.Value;
+import dev.akarah.llvm.inst.atomic.AtomicOrdering;
+import dev.akarah.llvm.inst.atomic.RMWOperation;
 import dev.akarah.llvm.inst.misc.Call;
 import dev.akarah.llvm.inst.ops.ComparisonOperation;
 import dev.akarah.llvm.ir.IRFormatter;
@@ -57,31 +59,27 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
                 function.returns(Types.integer(16));
 
                 var bb = BasicBlock.of(Value.LocalVariable.random());
-                debugPrint(bb, module, "Decreasing refcount");
                 var fieldPtr = bb.getElementPtr(
                     Types.integer(16),
                     p1,
                     Types.integer(32), Constant.constant(0));
-                var addedValue = bb.sub(
+                var old = bb.atomicrmw(
+                    RMWOperation.SUB,
                     Types.integer(16),
-                    bb.load(
-                        Types.integer(16),
-                        fieldPtr
-                    ),
+                    fieldPtr,
+                    Constant.constant(1),
+                    AtomicOrdering.SEQUENTIALLY_CONSISTENT
+                );
+                var newValue = bb.sub(
+                    Types.integer(16),
+                    old,
                     Constant.constant(1)
                 );
-                bb.store(
-                    Types.integer(16),
-                    addedValue,
-                    fieldPtr
-                );
-
-                debugPrint(bb, module, "Decreased refcount");
                 bb.ifThenElse(
                     bb.icmp(
                         ComparisonOperation.EQUAL,
                         Types.integer(16),
-                        addedValue,
+                        newValue,
                         Constant.constant(0)
                     ),
                     ifTrue -> {
@@ -92,11 +90,10 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
                                 return IRFormatter.format("call void @free(ptr {})", p1);
                             }
                         });
-                        ifTrue.ret(Types.integer(16), addedValue);
+                        ifTrue.ret(Types.integer(16), newValue);
                     },
                     ifFalse -> {
-                        debugPrint(ifFalse, module, "Keeping refcounted memory");
-                        ifFalse.ret(Types.integer(16), addedValue);
+                        ifFalse.ret(Types.integer(16), newValue);
                     }
                 );
 
@@ -106,22 +103,22 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
     }
 
     public static void debugPrint(BasicBlock basicBlock, Module module, String message) {
-//        var global = Value.GlobalVariable.random();
-//        module.newGlobal(
-//            global,
-//            globalVariable -> {
-//                globalVariable
-//                    .withType(Types.array(message.length()+1, Types.integer(8)))
-//                    .withValue(new Value.CStringConstant(message + "\\\\00"));
-//            }
-//        );
-//        basicBlock.call(
-//            Types.integer(32),
-//            new Value.GlobalVariable("puts"),
-//            List.of(new Call.Parameter(
-//                Types.pointer(),
-//                global
-//            ))
-//        );
+        var global = Value.GlobalVariable.random();
+        module.newGlobal(
+            global,
+            globalVariable -> {
+                globalVariable
+                    .withType(Types.array(message.length()+1, Types.integer(8)))
+                    .withValue(new Value.CStringConstant(message + "\\\\00"));
+            }
+        );
+        basicBlock.call(
+            Types.integer(32),
+            new Value.GlobalVariable("puts"),
+            List.of(new Call.Parameter(
+                Types.pointer(),
+                global
+            ))
+        );
     }
 }
