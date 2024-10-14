@@ -34,11 +34,6 @@ public record InitStructure(Mutable<Type> type, SpanData errorSpan) implements E
             new Value.ZeroInitializer(),
             ptr
         );
-        transformer.basicBlocks.peek().call(
-            Types.integer(16),
-            ReferenceCountingLibrary.INCREMENT_REFERENCE_COUNT,
-            List.of(new Call.Parameter(Types.pointerTo(Types.VOID), ptr))
-        );
         ReferenceCountingLibrary.debugPrint(transformer.basicBlocks.peek(), transformer.module, "Allocating refcounted memory");
         return ptr;
     }

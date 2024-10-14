@@ -3,6 +3,7 @@ package dev.akarah.lang.ast.expr.literal;
 import dev.akarah.lang.SpanData;
 import dev.akarah.lang.ast.Type;
 import dev.akarah.lang.ast.block.CodeBlock;
+import dev.akarah.lang.ast.block.CodeBlockData;
 import dev.akarah.lang.ast.expr.Expression;
 import dev.akarah.lang.llvm.FunctionTransformer;
 import dev.akarah.llvm.inst.Types;
@@ -38,7 +39,6 @@ public record StdStringLiteral(String contents, SpanData errorSpan) implements E
             new Value.GlobalVariable("std.string.of"),
             List.of(new Call.Parameter(Types.pointer(), global))
         );
-        codeBlock.data().extraAllocations().add((Value.LocalVariable) ptr);
         return ptr;
     }
 

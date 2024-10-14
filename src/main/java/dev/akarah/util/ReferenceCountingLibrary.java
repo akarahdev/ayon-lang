@@ -1,5 +1,10 @@
 package dev.akarah.util;
 
+import dev.akarah.lang.SpanData;
+import dev.akarah.lang.ast.ProgramTypeInformation;
+import dev.akarah.lang.ast.Type;
+import dev.akarah.lang.ast.block.CodeBlock;
+import dev.akarah.lang.llvm.FunctionTransformer;
 import dev.akarah.llvm.Module;
 import dev.akarah.llvm.cfg.BasicBlock;
 import dev.akarah.llvm.inst.Constant;
@@ -19,6 +24,36 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
     public static Value.GlobalVariable INCREMENT_REFERENCE_COUNT = new Value.GlobalVariable("lang.refcount.inc");
     public static Value.GlobalVariable DECREMENT_REFERENCE_COUNT = new Value.GlobalVariable("lang.refcount.dec");
 
+    public static void releasePointer(CodeBlock codeBlock, FunctionTransformer transformer, Type type, Value value, SpanData errorSpan) {
+        if (type instanceof Type.UserStructure userStructure) {
+            var struct = ProgramTypeInformation.resolveStructure(userStructure.name(), errorSpan);
+            int index = 0;
+            for (var parameter : struct.parameters().keySet()) {
+                index++;
+                if(struct.parameters().get(parameter) instanceof Type.UserStructure userStructure1) {
+                    var ptr = transformer.basicBlocks.peek().getElementPtr(
+                        struct.llvmStruct(),
+                        value,
+                        Types.integer(32),
+                        Constant.constant(0),
+                        Types.integer(32),
+                        Constant.constant(index)
+                    );
+                    transformer.basicBlocks.peek().call(
+                        Types.integer(16),
+                        ReferenceCountingLibrary.DECREMENT_REFERENCE_COUNT,
+                        List.of(new Call.Parameter(Types.pointer(), ptr))
+                    );
+                }
+            }
+            transformer.basicBlocks.peek().call(
+                Types.integer(16),
+                ReferenceCountingLibrary.DECREMENT_REFERENCE_COUNT,
+                List.of(new Call.Parameter(Types.pointer(), value))
+            );
+        }
+    }
+
     @Override
     public void modifyModule(Module module) {
         module.newFunction(
@@ -29,6 +64,7 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
                 function.returns(Types.integer(16));
 
                 var bb = BasicBlock.of(Value.LocalVariable.random());
+                debugPrint(bb, module, "+");
                 var fieldPtr = bb.getElementPtr(
                     Types.integer(16),
                     p1,
@@ -54,11 +90,13 @@ public class ReferenceCountingLibrary implements LLVMLibrary {
         module.newFunction(
             DECREMENT_REFERENCE_COUNT,
             function -> {
+
                 var p1 = Value.LocalVariable.random();
                 function.parameter(Types.pointerTo(Types.VOID), p1);
                 function.returns(Types.integer(16));
 
                 var bb = BasicBlock.of(Value.LocalVariable.random());
+                debugPrint(bb, module, "-");
                 var fieldPtr = bb.getElementPtr(
                     Types.integer(16),
                     p1,

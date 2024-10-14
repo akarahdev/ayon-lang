@@ -249,7 +249,7 @@ public class Parser {
                 returnType,
                 new CodeBlock(
                     List.of(new ReturnValue(parseExpression(), span2)),
-                    new CodeBlockData(new HashMap<>(), new HashMap<>(), new ArrayList<>()),
+                    new CodeBlockData(new HashMap<>(), new HashMap<>()),
                     span2
                 ),
                 attributes,
@@ -276,7 +276,7 @@ public class Parser {
         tokenReader.match(it -> it instanceof Token.CloseBrace,
             it -> { throw new CompileError.UnexpectedTokens(it, Token.CloseBrace.class); });
 
-        return new CodeBlock(stmt, new CodeBlockData(new HashMap<>(), new HashMap<>(), new ArrayList<>()), span);
+        return new CodeBlock(stmt, new CodeBlockData(new HashMap<>(), new HashMap<>()), span);
     }
 
     public Statement parseStatement() {
@@ -294,7 +294,7 @@ public class Parser {
                         var ifFalse = parseCodeBlock();
                         yield new IfStatement(cond, ifTrue, ifFalse, span);
                     } else {
-                        yield new IfStatement(cond, ifTrue, new CodeBlock(List.of(), new CodeBlockData(new HashMap<>(), new HashMap<>(), new ArrayList<>()), span), span);
+                        yield new IfStatement(cond, ifTrue, new CodeBlock(List.of(), new CodeBlockData(new HashMap<>(), new HashMap<>()), span), span);
                     }
                 }
                 case "var" -> {
