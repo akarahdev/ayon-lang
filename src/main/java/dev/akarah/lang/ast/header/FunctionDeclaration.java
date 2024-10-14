@@ -13,7 +13,8 @@ public record FunctionDeclaration(
     LinkedHashMap<String, Type> parameters,
     Type returnType,
     List<Attribute> attributes,
-    SpanData errorSpan
+    SpanData errorSpan,
+    boolean varArgs
 ) implements Header {
     public void accept(AST.Visitor visitor) {
         visitor.header(this);

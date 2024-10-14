@@ -141,6 +141,9 @@ public class Parser {
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.OpenParen);
         var params = new LinkedHashMap<String, Type>();
+
+        var varArgs = false;
+
         loop:
         while (true) {
             skipWhitespace();
@@ -149,24 +152,33 @@ public class Parser {
                 break;
             }
 
-            var id = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
-            tokenReader.match(it -> it instanceof Token.Colon);
-            var ty = parseType();
 
-            var ot = tokenReader.match(it -> it instanceof Token.Comma || it instanceof Token.CloseParen,
-                it -> { throw new CompileError.UnexpectedTokens(it, Token.Comma.class, Token.CloseParen.class); });
+            if(tokenReader.peek() instanceof Token.Star) {
+                tokenReader.match(it -> it instanceof Token.Star);
+                varArgs = true;
+            } else if(tokenReader.peek() instanceof Token.IdentifierLiteral) {
+                var id = (Token.IdentifierLiteral) tokenReader.match(it -> it instanceof Token.IdentifierLiteral);
+                tokenReader.match(it -> it instanceof Token.Colon);
+                var ty = parseType();
 
-            params.put(id.literal(), ty);
+                var ot = tokenReader.match(it -> it instanceof Token.Comma || it instanceof Token.CloseParen,
+                    it -> { throw new CompileError.UnexpectedTokens(it, Token.Comma.class, Token.CloseParen.class); });
 
-            switch (ot) {
-                case Token.CloseParen closeParen -> {
-                    break loop;
-                }
-                case Token.Comma comma -> {
-                }
-                default -> {
+                params.put(id.literal(), ty);
+
+                switch (ot) {
+                    case Token.CloseParen closeParen -> {
+                        break loop;
+                    }
+                    case Token.Comma comma -> {
+                    }
+                    default -> {
+                    }
                 }
             }
+
+
+
         }
         skipWhitespace();
         tokenReader.match(it -> it instanceof Token.Arrow,
@@ -180,7 +192,8 @@ public class Parser {
             params,
             returnType,
             attributes,
-            span
+            span,
+            varArgs
         );
     }
 

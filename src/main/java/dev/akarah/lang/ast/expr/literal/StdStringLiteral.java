@@ -49,6 +49,9 @@ public record StdStringLiteral(String contents, SpanData errorSpan) implements E
 
     @Override
     public String toString() {
-        return '"' + contents + "\\\\00" + '"';
+        return ("stdstr(" + contents.toString()
+            .replace("\\00", "")
+            .replace("\"", "") + ')')
+            ;
     }
 }

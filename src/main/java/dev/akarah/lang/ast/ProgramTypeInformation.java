@@ -47,7 +47,8 @@ public class ProgramTypeInformation {
                     function.parameters(),
                     function.returnType(),
                     function.attributes(),
-                    function.errorSpan()
+                    function.errorSpan(),
+                    false
                 );
                 case FunctionDeclaration declaration -> declaration;
                 default -> throw new CompileError.RawMessage(name + " is not a valid function", span);
